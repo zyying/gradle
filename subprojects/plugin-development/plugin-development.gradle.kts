@@ -29,6 +29,7 @@ dependencies {
     compile(project(":publish"))
     compile(project(":maven"))
     compile(project(":ivy"))
+    compile(project(":modelGroovy"))
     testRuntime(project(":toolingApi"))
     testRuntime(project(":launcher"))
     testRuntime(project(":testKit"))

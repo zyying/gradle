@@ -75,6 +75,7 @@ import org.gradle.cache.CacheRepository;
 import org.gradle.cache.FileLockManager;
 import org.gradle.caching.internal.BuildCacheServices;
 import org.gradle.configuration.BuildConfigurer;
+import org.gradle.configuration.CompileOperationFactory;
 import org.gradle.configuration.DefaultBuildConfigurer;
 import org.gradle.configuration.DefaultInitScriptProcessor;
 import org.gradle.configuration.DefaultScriptPluginFactory;
@@ -84,6 +85,7 @@ import org.gradle.configuration.ScriptPluginFactorySelector;
 import org.gradle.configuration.internal.UserCodeApplicationContext;
 import org.gradle.configuration.project.BuildScriptProcessor;
 import org.gradle.configuration.project.ConfigureActionsProjectEvaluator;
+import org.gradle.configuration.project.DefaultCompileOperationFactory;
 import org.gradle.configuration.project.DelayedConfigurationActions;
 import org.gradle.configuration.project.LifecycleProjectEvaluator;
 import org.gradle.configuration.project.PluginsProjectConfigureActions;
@@ -99,6 +101,8 @@ import org.gradle.groovy.scripts.internal.CrossBuildInMemoryCachingScriptClassCa
 import org.gradle.groovy.scripts.internal.DefaultScriptCompilationHandler;
 import org.gradle.groovy.scripts.internal.DefaultScriptRunnerFactory;
 import org.gradle.groovy.scripts.internal.FileCacheBackedScriptClassCompiler;
+import org.gradle.groovy.scripts.internal.ScriptCompilationHandler;
+import org.gradle.groovy.scripts.internal.ScriptRunnerFactory;
 import org.gradle.initialization.BuildCancellationToken;
 import org.gradle.initialization.BuildLoader;
 import org.gradle.initialization.BuildOperationSettingsProcessor;
@@ -256,17 +260,21 @@ public class BuildScopeServices extends DefaultServiceRegistry {
             ));
     }
 
-    protected ScriptCompilerFactory createScriptCompileFactory(ListenerManager listenerManager,
-                                                               FileCacheBackedScriptClassCompiler scriptCompiler,
+    protected ScriptCompilerFactory createScriptCompileFactory(FileCacheBackedScriptClassCompiler scriptCompiler,
                                                                CrossBuildInMemoryCachingScriptClassCache cache,
-                                                               InstantiatorFactory instantiatorFactory) {
-        ScriptExecutionListener scriptExecutionListener = listenerManager.getBroadcaster(ScriptExecutionListener.class);
+                                                               ScriptRunnerFactory scriptRunnerFactory) {
+
         return new DefaultScriptCompilerFactory(
             new BuildScopeInMemoryCachingScriptClassCompiler(cache, scriptCompiler),
-            new DefaultScriptRunnerFactory(
-                scriptExecutionListener,
-                instantiatorFactory.inject()
-            )
+            scriptRunnerFactory
+        );
+    }
+
+    protected ScriptRunnerFactory createScriptRunnerFactory(ListenerManager listenerManager, InstantiatorFactory instantiatorFactory) {
+        ScriptExecutionListener scriptExecutionListener = listenerManager.getBroadcaster(ScriptExecutionListener.class);
+        return new DefaultScriptRunnerFactory(
+            scriptExecutionListener,
+            instantiatorFactory.inject()
         );
     }
 
@@ -274,14 +282,18 @@ public class BuildScopeServices extends DefaultServiceRegistry {
         CacheRepository cacheRepository, final StartParameter startParameter,
         ProgressLoggerFactory progressLoggerFactory, ClassLoaderCache classLoaderCache, ImportsReader importsReader,
         ClassLoaderHierarchyHasher classLoaderHierarchyHasher,
-        BuildOperationExecutor buildOperationExecutor) {
+        BuildOperationExecutor buildOperationExecutor, DefaultScriptCompilationHandler scriptCompilationHandler) {
         return new FileCacheBackedScriptClassCompiler(
             cacheRepository,
             new BuildOperationBackedScriptCompilationHandler(
-                new DefaultScriptCompilationHandler(classLoaderCache, importsReader), buildOperationExecutor),
+                scriptCompilationHandler, buildOperationExecutor),
             progressLoggerFactory,
             classLoaderCache,
             classLoaderHierarchyHasher);
+    }
+
+    protected DefaultScriptCompilationHandler createScriptCompilationHandler(ClassLoaderCache classLoaderCache, ImportsReader importsReader) {
+        return new DefaultScriptCompilationHandler(classLoaderCache, importsReader);
     }
 
     protected ScriptPluginFactory createScriptPluginFactory(InstantiatorFactory instantiatorFactory, BuildOperationExecutor buildOperationExecutor, UserCodeApplicationContext userCodeApplicationContext) {
@@ -290,6 +302,10 @@ public class BuildScopeServices extends DefaultServiceRegistry {
         ScriptPluginFactorySelector scriptPluginFactorySelector = new ScriptPluginFactorySelector(defaultScriptPluginFactory, instantiator, buildOperationExecutor, userCodeApplicationContext);
         defaultScriptPluginFactory.setScriptPluginFactory(scriptPluginFactorySelector);
         return scriptPluginFactorySelector;
+    }
+
+    protected CompileOperationFactory createCompileOperationFactory(DocumentationRegistry documentationRegistry) {
+        return new DefaultCompileOperationFactory(documentationRegistry);
     }
 
     private DefaultScriptPluginFactory defaultScriptPluginFactory() {
@@ -302,7 +318,6 @@ public class BuildScopeServices extends DefaultServiceRegistry {
             get(FileSystem.class),
             get(FileLookup.class),
             get(DirectoryFileTreeFactory.class),
-            get(DocumentationRegistry.class),
             get(ModelRuleSourceDetector.class),
             get(ProviderFactory.class),
             get(TextResourceLoader.class),
@@ -310,7 +325,8 @@ public class BuildScopeServices extends DefaultServiceRegistry {
             get(FileHasher.class),
             get(ExecFactory.class),
             get(FileCollectionFactory.class),
-            get(AutoAppliedPluginHandler.class));
+            get(AutoAppliedPluginHandler.class),
+            get(CompileOperationFactory.class));
     }
 
     protected SettingsLoaderFactory createSettingsLoaderFactory(SettingsProcessor settingsProcessor, BuildLayoutFactory buildLayoutFactory, BuildState currentBuild, ClassLoaderScopeRegistry classLoaderScopeRegistry, FileLockManager fileLockManager, BuildOperationExecutor buildOperationExecutor, CachedClasspathTransformer cachedClasspathTransformer, CachingServiceLocator cachingServiceLocator, BuildStateRegistry buildRegistry, ProjectStateRegistry projectRegistry, PublicBuildPath publicBuildPath) {
