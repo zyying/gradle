@@ -83,4 +83,110 @@ class PreCompiledScriptPluginsPluginIntegrationTest extends AbstractIntegrationS
         outputContains("bar script plugin applied")
         outputContains("foo script plugin applied")
     }
+
+    def "can apply configuration in a precompiled script plugin to the current project"() {
+        def buildSrcDir = file("buildSrc")
+        def pluginDir = buildSrcDir.createDir("src/main/groovy/plugins")
+        def fooPlugin = pluginDir.file("foo.gradle")
+
+        fooPlugin << """
+            sourceSets.main.java.srcDir 'src'
+        """
+
+        testDirectory.createDir("src").file("Foo.java") << """
+            public class Foo { }
+        """
+
+        buildSrcDir.file("build.gradle") << """
+            apply plugin: ${PreCompiledScriptPluginsPlugin.class.name}
+        """
+
+        buildFile << """
+            plugins {
+                id 'java'
+                id 'foo'
+            }
+        """
+
+        expect:
+        succeeds("classes")
+
+        and:
+        executedAndNotSkipped(":compileJava")
+
+        and:
+        file("build/classes/java/main/Foo.class").exists()
+    }
+
+    def "can apply and configure a plugin in a precompiled script plugin"() {
+        def buildSrcDir = file("buildSrc")
+        def pluginDir = buildSrcDir.createDir("src/main/groovy/plugins")
+        def fooPlugin = pluginDir.file("foo.gradle")
+
+        fooPlugin << """
+            plugins {
+                id 'java'
+            }
+            
+            sourceSets.main.java.srcDir 'src'
+        """
+
+        testDirectory.createDir("src").file("Foo.java") << """
+            public class Foo { }
+        """
+
+        buildSrcDir.file("build.gradle") << """
+            apply plugin: ${PreCompiledScriptPluginsPlugin.class.name}
+        """
+
+        buildFile << """
+            plugins {
+                id 'foo'
+            }
+        """
+
+        expect:
+        succeeds("classes")
+
+        and:
+        executedAndNotSkipped(":compileJava")
+
+        and:
+        file("build/classes/java/main/Foo.class").exists()
+    }
+
+    def "can add tasks in a precompiled script plugin"() {
+        def buildSrcDir = file("buildSrc")
+        def pluginDir = buildSrcDir.createDir("src/main/groovy/plugins")
+        def fooPlugin = pluginDir.file("foo.gradle")
+
+        fooPlugin << """
+            task doSomething {
+                doFirst { println "from foo plugin" }
+            }
+        """
+
+        buildSrcDir.file("build.gradle") << """
+            apply plugin: ${PreCompiledScriptPluginsPlugin.class.name}
+        """
+
+        buildFile << """
+            plugins {
+                id 'foo'
+            }
+            
+            doSomething {
+                doLast {
+                    println "from main build script"
+                }
+            }
+        """
+
+        expect:
+        succeeds("doSomething")
+
+        and:
+        outputContains("from foo plugin")
+        outputContains("from main build script")
+    }
 }
