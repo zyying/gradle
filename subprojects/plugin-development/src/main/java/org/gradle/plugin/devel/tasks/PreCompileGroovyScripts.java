@@ -18,9 +18,12 @@ package org.gradle.plugin.devel.tasks;
 
 import com.google.common.collect.Sets;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.file.CopySpec;
+import org.gradle.api.file.Directory;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.internal.initialization.ClassLoaderScope;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
@@ -64,9 +67,14 @@ public class PreCompileGroovyScripts extends DefaultTask {
         return scriptPlugins.stream().map(scriptPlugin -> scriptPlugin.getScriptFile()).collect(Collectors.toSet());
     }
 
-    @OutputDirectory
+    @Internal
     public DirectoryProperty getClassesDir() {
         return classesDir;
+    }
+
+    @OutputDirectory
+    public Provider<Directory> getClassOutputDir() {
+        return classesDir.dir("classes");
     }
 
     @OutputDirectory
@@ -94,19 +102,32 @@ public class PreCompileGroovyScripts extends DefaultTask {
         ClassLoader classLoader = classLoaderScope.getExportClassLoader();
 
         CompileOperationFactory compileOperationFactory = getServices().get(CompileOperationFactory.class);
-        File classesDirValue = getClassesDir().getAsFile().get();
+        File classesDirValue = classesDir.getAsFile().get();
         File metadataDirValue = getMetadataDir().getAsFile().get();
+
+        CopySpec classesSpec = getProject().copySpec();
 
         for (PreCompiledScript scriptPlugin : scriptPlugins) {
             ScriptTarget scriptTarget = new PreCompiledScriptTarget();
+            File pluginMetadataDir = new File(metadataDirValue, scriptPlugin.getPluginMetadataDirPath());
+            File pluginClassesDir = new File(classesDirValue, scriptPlugin.getPluginClassesDirPath());
+            File buildScriptMetadataDir = new File(metadataDirValue, scriptPlugin.getBuildScriptMetadataDirPath());
+            File buildScriptClassesDir = new File(classesDirValue, scriptPlugin.getBuildScriptClassesDirPath());
 
             // 1st pass, compile plugin requests and store metadata
             CompileOperation<PluginRequests> pluginRequestsCompileOperation = compileOperationFactory.getPluginRequestsCompileOperation(scriptPlugin.getSource(), scriptTarget);
-            scriptCompilationHandler.compileToDir(scriptPlugin.getSource(), classLoader, scriptPlugin.getPluginClassesDir(classesDirValue), scriptPlugin.getPluginMetadataDir(metadataDirValue), pluginRequestsCompileOperation, scriptTarget.getScriptClass(), Actions.doNothing());
+            scriptCompilationHandler.compileToDir(scriptPlugin.getSource(), classLoader, pluginClassesDir, pluginMetadataDir, pluginRequestsCompileOperation, scriptTarget.getScriptClass(), Actions.doNothing());
 
             // 2nd pass, compile build script and store metadata
             CompileOperation<BuildScriptData> buildScriptDataCompileOperation = compileOperationFactory.getBuildScriptDataCompileOperation(scriptPlugin.getSource(), scriptTarget);
-            scriptCompilationHandler.compileToDir(scriptPlugin.getSource(), classLoader, scriptPlugin.getBuildScriptClassesDir(classesDirValue), scriptPlugin.getBuildScriptMetadataDir(metadataDirValue), buildScriptDataCompileOperation, scriptTarget.getScriptClass(), ClosureCreationInterceptingVerifier.INSTANCE);
+            scriptCompilationHandler.compileToDir(scriptPlugin.getSource(), classLoader, buildScriptClassesDir, buildScriptMetadataDir, buildScriptDataCompileOperation, scriptTarget.getScriptClass(), ClosureCreationInterceptingVerifier.INSTANCE);
+            classesSpec.from(buildScriptClassesDir);
         }
+
+        // TODO This is ridiculous
+        getProject().copy(copySpec -> {
+            copySpec.with(classesSpec);
+            copySpec.into(getClassOutputDir());
+        });
     }
 }

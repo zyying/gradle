@@ -29,24 +29,23 @@ import org.gradle.configuration.ScriptTarget;
 import org.gradle.groovy.scripts.BasicScript;
 import org.gradle.groovy.scripts.ScriptRunner;
 import org.gradle.groovy.scripts.ScriptSource;
-import org.gradle.groovy.scripts.TextResourceScriptSource;
 import org.gradle.groovy.scripts.internal.BuildScriptData;
 import org.gradle.groovy.scripts.internal.CompileOperation;
 import org.gradle.groovy.scripts.internal.ScriptCompilationHandler;
 import org.gradle.groovy.scripts.internal.ScriptRunnerFactory;
-import org.gradle.internal.resource.UriTextResource;
-import org.gradle.plugin.management.internal.PluginRequestInternal;
+import org.gradle.internal.UncheckedException;
 import org.gradle.plugin.management.internal.PluginRequests;
 import org.gradle.plugin.management.internal.autoapply.AutoAppliedPluginHandler;
 import org.gradle.plugin.use.internal.PluginRequestApplicator;
 
 import java.io.File;
+import java.net.URISyntaxException;
 
 public class PreCompiledScriptRunner {
     public static void apply(ProjectInternal project,
-                      File scriptFile,
-                      File classesDir,
-                      File metadataDir) {
+                      String scriptFile,
+                      String className,
+                      String hashCode) {
         CompileOperationFactory compileOperationFactory = project.getServices().get(CompileOperationFactory.class);
         ScriptCompilationHandler scriptCompilationHandler = project.getServices().get(ScriptCompilationHandler.class);
         ScriptRunnerFactory scriptRunnerFactory = project.getServices().get(ScriptRunnerFactory.class);
@@ -59,14 +58,16 @@ public class PreCompiledScriptRunner {
         classLoaderScope.lock();
         ClassLoader classLoader = classLoaderScope.getExportClassLoader();
 
-        ScriptSource scriptSource = new TextResourceScriptSource(new UriTextResource("script", scriptFile));
+        ScriptSource scriptSource = new PreCompiledScriptSource(scriptFile, className, "script", hashCode);
         PreCompiledScript scriptPlugin = new PreCompiledScript(scriptSource);
         ScriptTarget scriptTarget = new DefaultScriptTarget(project);
 
-        // Pass 1, apply plugins
+        File jarFile = getJarFileFor(classLoader, className);
+
+        // Pass 1, extract metadata and apply plugins
         CompileOperation<PluginRequests> pluginRequestsCompileOperation = compileOperationFactory.getPluginRequestsCompileOperation(scriptPlugin.getSource(), scriptTarget);
         ClassLoaderId classLoaderId = ClassLoaderIds.buildScript(scriptPlugin.getSource().getFileName(), pluginRequestsCompileOperation.getId());
-        ScriptRunner<? extends BasicScript, PluginRequests> initialRunner = scriptRunnerFactory.create(scriptCompilationHandler.loadFromDir(scriptPlugin.getSource(), scriptPlugin.getSource().getResource().getContentHash(), classLoader, scriptPlugin.getPluginClassesDir(classesDir), scriptPlugin.getPluginMetadataDir(metadataDir), pluginRequestsCompileOperation, scriptTarget.getScriptClass(), classLoaderId), scriptSource, classLoader);
+        ScriptRunner<? extends BasicScript, PluginRequests> initialRunner = scriptRunnerFactory.create(scriptCompilationHandler.loadFromClasspath("dummy", scriptSource.getFileName(), scriptSource.getDisplayName(), scriptPlugin.getSource().getResource().getContentHash(), classLoader, jarFile, scriptPlugin.getPluginMetadataDirPath(), pluginRequestsCompileOperation, scriptTarget.getScriptClass(), classLoaderId), scriptSource, classLoader);
         // TODO should use script services here
         initialRunner.run(project, project.getServices());
         PluginRequests initialPluginRequests = initialRunner.getData();
@@ -78,10 +79,25 @@ public class PreCompiledScriptRunner {
 
         // Pass 2, execute script
         CompileOperation<BuildScriptData> buildScriptDataCompileOperation = compileOperationFactory.getBuildScriptDataCompileOperation(scriptPlugin.getSource(), scriptTarget);
-        ScriptRunner<? extends BasicScript, BuildScriptData> runner = scriptRunnerFactory.create(scriptCompilationHandler.loadFromDir(scriptSource, scriptSource.getResource().getContentHash(), classLoader, scriptPlugin.getBuildScriptClassesDir(classesDir), scriptPlugin.getBuildScriptMetadataDir(metadataDir),buildScriptDataCompileOperation, scriptTarget.getScriptClass(), classLoaderId), scriptSource, classLoader);
+        ScriptRunner<? extends BasicScript, BuildScriptData> runner = scriptRunnerFactory.create(scriptCompilationHandler.loadFromClasspath(className, scriptSource.getFileName(), scriptSource.getDisplayName(), scriptSource.getResource().getContentHash(), classLoader, jarFile, scriptPlugin.getBuildScriptMetadataDirPath(),buildScriptDataCompileOperation, scriptTarget.getScriptClass(), classLoaderId), scriptSource, classLoader);
         if (runner.getRunDoesSomething()) {
             // TODO should use script services here
             runner.run(project, project.getServices());
+        }
+    }
+
+    private static String toPackage(String string) {
+        return string.replace("/", ".");
+    }
+
+    private static File getJarFileFor(ClassLoader classLoader, String className) {
+        try {
+            Class<?> scriptClass = classLoader.loadClass(className);
+            return new File(scriptClass.getProtectionDomain().getCodeSource().getLocation().toURI());
+        } catch (ClassNotFoundException e) {
+            throw UncheckedException.throwAsUncheckedException(e);
+        } catch (URISyntaxException e) {
+            throw UncheckedException.throwAsUncheckedException(e);
         }
     }
 }

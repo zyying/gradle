@@ -31,4 +31,7 @@ public interface ScriptCompilationHandler {
 
     <T extends Script, M> CompiledScript<T, M> loadFromDir(ScriptSource source, HashCode sourceHashCode, ClassLoader classLoader, File scriptCacheDir,
                                                            File metadataCacheDir, CompileOperation<M> transformer, Class<T> scriptBaseClass, ClassLoaderId classLoaderId);
+
+    <T extends Script, M> CompiledScript<T, M> loadFromClasspath(String className, String fileName, String displayName, HashCode sourceHashCode, ClassLoader classLoader, File scriptCacheDir,
+                                                           String metadataCacheDirPath, CompileOperation<M> transformer, Class<T> scriptBaseClass, ClassLoaderId classLoaderId);
 }

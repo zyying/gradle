@@ -98,9 +98,9 @@ public class GenerateScriptPluginAdapters extends DefaultTask {
             writer.write("  public void apply(Project project) {\n");
             writer.write("      PreCompiledScriptRunner.apply(\n");
             writer.write("          (ProjectInternal)project,");
-            writer.write("         new File(\""+ scriptPlugin.getScriptFile().getAbsolutePath() + "\"),\n");
-            writer.write("         new File(\""+ baseClassesDir.getAbsolutePath() + "\"),\n");
-            writer.write("         new File(\""+ baseMetadataDir.getAbsolutePath() + "\")\n");
+            writer.write("         \""+ scriptPlugin.getScriptFile().getName() + "\",\n");
+            writer.write("         \""+ scriptPlugin.getClassName() + "\",\n");
+            writer.write("         \""+ scriptPlugin.getSource().getResource().getContentHash().toString() + "\"\n");
             writer.write("      );\n");
             writer.write("  }\n");
             writer.write("}\n");

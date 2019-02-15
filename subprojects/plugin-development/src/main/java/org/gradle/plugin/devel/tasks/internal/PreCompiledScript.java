@@ -22,8 +22,8 @@ import java.io.File;
 
 public class PreCompiledScript {
     public static final String SCRIPT_PLUGIN_EXTENSION = ".gradle";
-    private static final String PLUGIN_PREFIX = "cp_proj";
-    private static final String BUILDSCRIPT_PREFIX = "proj";
+    private static final String PLUGIN_PREFIX = "plugins";
+    private static final String BUILDSCRIPT_PREFIX = "script";
 
     private final ScriptSource scriptSource;
     private final String scriptHash;
@@ -33,20 +33,20 @@ public class PreCompiledScript {
         this.scriptHash = scriptSource.getResource().getContentHash().toString();
     }
 
-    public File getPluginMetadataDir(File baseMetadataDir) {
-        return new File(baseMetadataDir, PLUGIN_PREFIX + scriptHash + "/metadata");
+    public String getPluginMetadataDirPath() {
+        return getClassName() + "/" + PLUGIN_PREFIX + "-metadata";
     }
 
-    public File getBuildScriptMetadataDir(File baseMetadataDir) {
-        return new File(baseMetadataDir, BUILDSCRIPT_PREFIX + scriptHash + "/metadata");
+    public String getBuildScriptMetadataDirPath() {
+        return getClassName() + "/" + BUILDSCRIPT_PREFIX + "-metadata";
     }
 
-    public File getPluginClassesDir(File baseMetadataDir) {
-        return new File(baseMetadataDir, PLUGIN_PREFIX + scriptHash + "/classes");
+    public String getPluginClassesDirPath() {
+        return getClassName() + "/" + PLUGIN_PREFIX + "-classes";
     }
 
-    public File getBuildScriptClassesDir(File baseMetadataDir) {
-        return new File(baseMetadataDir, BUILDSCRIPT_PREFIX + scriptHash + "/classes");
+    public String getBuildScriptClassesDirPath() {
+        return getClassName() + "/" + BUILDSCRIPT_PREFIX + "-classes";
     }
 
     public File getScriptFile() {

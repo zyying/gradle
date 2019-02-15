@@ -71,8 +71,8 @@ public class PreCompiledScriptPluginsPlugin implements Plugin<Project> {
 
         declarePluginMetadata(pluginExtension, scriptPlugins);
 
-        Provider<Directory> baseMetadataDir = buildLayout.getBuildDirectory().dir("compiled-scripts/groovy-dsl-plugins/groovy");
-        Provider<Directory> baseClassesDir = buildLayout.getBuildDirectory().dir("compiled-scripts/groovy-dsl-plugins/groovy-metadata");
+        Provider<Directory> baseMetadataDir = buildLayout.getBuildDirectory().dir("compiled-scripts/groovy-dsl-plugins/groovy-metadata");
+        Provider<Directory> baseClassesDir = buildLayout.getBuildDirectory().dir("compiled-scripts/groovy-dsl-plugins/groovy");
 
         TaskProvider<PreCompileGroovyScripts> preCompileTask = tasks.register("preCompileScriptPlugins", PreCompileGroovyScripts.class, preCompileGroovyScripts -> {
             preCompileGroovyScripts.getScriptPlugins().addAll(scriptPlugins);
@@ -81,7 +81,8 @@ public class PreCompiledScriptPluginsPlugin implements Plugin<Project> {
             preCompileGroovyScripts.getMetadataDir().set(baseMetadataDir);
         });
 
-        pluginExtension.getPluginSourceSet().getOutput().dir(preCompileTask.flatMap(task -> task.getClassesDir()));
+        pluginExtension.getPluginSourceSet().getOutput().dir(preCompileTask.flatMap(task -> task.getClassOutputDir()));
+        pluginExtension.getPluginSourceSet().getOutput().dir(preCompileTask.flatMap(task -> task.getMetadataDir()));
 
         Provider<Directory> generatedClassesDir = buildLayout.getBuildDirectory().dir("generated-classes/groovy-dsl-plugins/java");
         TaskProvider<GenerateScriptPluginAdapters> generateAdaptersTask = tasks.register("generateScriptPluginAdapters", GenerateScriptPluginAdapters.class, generateScriptPluginAdapters -> {

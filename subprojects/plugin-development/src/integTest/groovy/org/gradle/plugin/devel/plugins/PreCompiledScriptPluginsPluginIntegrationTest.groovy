@@ -40,11 +40,11 @@ class PreCompiledScriptPluginsPluginIntegrationTest extends AbstractIntegrationS
         succeeds("help")
 
         then:
-        outputContains("foo: foo_")
-        outputContains("bar: bar_")
+        outputContains("foo: fooPlugin")
+        outputContains("bar: barPlugin")
     }
 
-    def "can apply precompiled script plugins"() {
+    def "can apply a precompiled script plugin by id that applies another precompiled script plugin by id"() {
         def buildSrcDir = file("buildSrc")
         def pluginDir = buildSrcDir.createDir("src/main/groovy/plugins")
         def fooPlugin = pluginDir.file("foo.gradle")
@@ -77,6 +77,10 @@ class PreCompiledScriptPluginsPluginIntegrationTest extends AbstractIntegrationS
         """
 
         expect:
-        succeeds("help")
+        succeeds("clean")
+
+        and:
+        outputContains("bar script plugin applied")
+        outputContains("foo script plugin applied")
     }
 }

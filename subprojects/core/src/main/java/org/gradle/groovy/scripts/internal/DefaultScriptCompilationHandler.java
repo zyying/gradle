@@ -58,7 +58,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -197,12 +199,30 @@ public class DefaultScriptCompilationHandler implements ScriptCompilationHandler
     }
 
     @Override
+    public <T extends Script, M> CompiledScript<T, M> loadFromClasspath(String className, String fileName, String displayName, HashCode sourceHashCode, ClassLoader classLoader, File scriptCacheLocation,
+                                                                        String metadataCacheDirPath, CompileOperation<M> transformer, Class<T> scriptBaseClass,
+                                                                        ClassLoaderId classLoaderId) {
+        InputStream metadataFileStream = classLoader.getResourceAsStream(metadataCacheDirPath + "/" + METADATA_FILE_NAME);
+        return loadFromStream(className, fileName, displayName, sourceHashCode, classLoader, scriptCacheLocation, metadataFileStream, transformer, scriptBaseClass, classLoaderId);
+    }
+
+    @Override
     public <T extends Script, M> CompiledScript<T, M> loadFromDir(ScriptSource source, HashCode sourceHashCode, ClassLoader classLoader, File scriptCacheDir,
                                                                   File metadataCacheDir, CompileOperation<M> transformer, Class<T> scriptBaseClass,
                                                                   ClassLoaderId classLoaderId) {
         File metadataFile = new File(metadataCacheDir, METADATA_FILE_NAME);
         try {
-            KryoBackedDecoder decoder = new KryoBackedDecoder(new FileInputStream(metadataFile));
+            return loadFromStream(source.getClassName(), source.getFileName(), source.getDisplayName(), sourceHashCode, classLoader, scriptCacheDir, new FileInputStream(metadataFile), transformer, scriptBaseClass, classLoaderId);
+        } catch (FileNotFoundException e) {
+            throw UncheckedException.throwAsUncheckedException(e);
+        }
+    }
+
+    private <T extends Script, M> CompiledScript<T, M> loadFromStream(String className, String fileName, String displayName, HashCode sourceHashCode, ClassLoader classLoader, File scriptCacheLocation,
+                                                                  InputStream metadataFileStream, CompileOperation<M> transformer, Class<T> scriptBaseClass,
+                                                                  ClassLoaderId classLoaderId) {
+        try {
+            KryoBackedDecoder decoder = new KryoBackedDecoder(metadataFileStream);
             try {
                 byte flags = decoder.readByte();
                 boolean isEmpty = (flags & EMPTY_FLAG) != 0;
@@ -216,12 +236,12 @@ public class DefaultScriptCompilationHandler implements ScriptCompilationHandler
                 } else {
                     data = null;
                 }
-                return new ClassesDirCompiledScript<T, M>(isEmpty, hasMethods, classLoaderId, scriptBaseClass, scriptCacheDir, classLoader, source, sourceHashCode, data);
+                return new ClassesDirCompiledScript<T, M>(isEmpty, hasMethods, classLoaderId, scriptBaseClass, scriptCacheLocation, classLoader, className, fileName, displayName, sourceHashCode, data);
             } finally {
                 decoder.close();
             }
         } catch (Exception e) {
-            throw new IllegalStateException(String.format("Failed to deserialize script metadata extracted for %s", source.getDisplayName()), e);
+            throw new IllegalStateException(String.format("Failed to deserialize script metadata extracted for %s", displayName), e);
         }
     }
 
@@ -294,19 +314,23 @@ public class DefaultScriptCompilationHandler implements ScriptCompilationHandler
         private final Class<T> scriptBaseClass;
         private final File scriptCacheDir;
         private final ClassLoader classLoader;
-        private final ScriptSource source;
+        private final String className;
+        private final String fileName;
+        private final String displayName;
         private final HashCode sourceHashCode;
         private final M metadata;
         private Class<? extends T> scriptClass;
 
-        public ClassesDirCompiledScript(boolean isEmpty, boolean hasMethods, ClassLoaderId classLoaderId, Class<T> scriptBaseClass, File scriptCacheDir, ClassLoader classLoader, ScriptSource source, HashCode sourceHashCode, M metadata) {
+        public ClassesDirCompiledScript(boolean isEmpty, boolean hasMethods, ClassLoaderId classLoaderId, Class<T> scriptBaseClass, File scriptCacheDir, ClassLoader classLoader, String className, String fileName, String displayName, HashCode sourceHashCode, M metadata) {
             this.isEmpty = isEmpty;
             this.hasMethods = hasMethods;
             this.classLoaderId = classLoaderId;
             this.scriptBaseClass = scriptBaseClass;
             this.scriptCacheDir = scriptCacheDir;
             this.classLoader = classLoader;
-            this.source = source;
+            this.className = className;
+            this.fileName = fileName;
+            this.displayName = displayName;
             this.sourceHashCode = sourceHashCode;
             this.metadata = metadata;
         }
@@ -334,14 +358,14 @@ public class DefaultScriptCompilationHandler implements ScriptCompilationHandler
                 }
                 try {
                     // Classloader scope will be handled by the cache, class will be released when the classloader is.
-                    ClassLoader loader = classLoaderCache.put(classLoaderId, new ScriptClassLoader(source, classLoader, DefaultClassPath.of(scriptCacheDir), sourceHashCode));
-                    scriptClass = loader.loadClass(source.getClassName()).asSubclass(scriptBaseClass);
+                    ClassLoader loader = classLoaderCache.put(classLoaderId, new ScriptClassLoader(className, fileName, classLoader, DefaultClassPath.of(scriptCacheDir), sourceHashCode));
+                    scriptClass = loader.loadClass(className).asSubclass(scriptBaseClass);
                 } catch (Exception e) {
-                    File expectedClassFile = new File(scriptCacheDir, source.getClassName() + ".class");
+                    File expectedClassFile = new File(scriptCacheDir, className + ".class");
                     if (!expectedClassFile.exists()) {
-                        throw new GradleException(String.format("Could not load compiled classes for %s from cache. Expected class file %s does not exist.", source.getDisplayName(), expectedClassFile.getAbsolutePath()), e);
+                        throw new GradleException(String.format("Could not load compiled classes for %s from cache. Expected class file %s does not exist.", displayName, expectedClassFile.getAbsolutePath()), e);
                     }
-                    throw new GradleException(String.format("Could not load compiled classes for %s from cache.", source.getDisplayName()), e);
+                    throw new GradleException(String.format("Could not load compiled classes for %s from cache.", displayName), e);
                 }
             }
             return scriptClass;
@@ -352,12 +376,12 @@ public class DefaultScriptCompilationHandler implements ScriptCompilationHandler
      * A specialized ClassLoader that avoids unnecessary delegation to the parent ClassLoader, and the resulting cascade of ClassNotFoundExceptions for those classes that are known to be available only in this ClassLoader and nowhere else.
      */
     private static class ScriptClassLoader extends VisitableURLClassLoader implements ImplementationHashAware {
-        private final ScriptSource scriptSource;
+        private final String className;
         private final HashCode implementationHash;
 
-        ScriptClassLoader(ScriptSource scriptSource, ClassLoader parent, ClassPath classPath, HashCode implementationHash) {
-            super("groovy-script-" + scriptSource.getFileName() + "-loader", parent, classPath);
-            this.scriptSource = scriptSource;
+        ScriptClassLoader(String className, String fileName, ClassLoader parent, ClassPath classPath, HashCode implementationHash) {
+            super("groovy-script-" + fileName + "-loader", parent, classPath);
+            this.className = className;
             this.implementationHash = implementationHash;
         }
 
@@ -369,7 +393,7 @@ public class DefaultScriptCompilationHandler implements ScriptCompilationHandler
         @Override
         protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
             // Generated script class name must be unique - take advantage of this to avoid delegation
-            if (name.startsWith(scriptSource.getClassName())) {
+            if (name.startsWith(className)) {
                 Class<?> cl = findLoadedClass(name);
                 if (cl == null) {
                     cl = findClass(name);
