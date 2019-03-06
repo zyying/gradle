@@ -35,6 +35,8 @@ plugins {
     id("org.gradle.ci.tag-single-build") version("0.55")
 }
 
+println("##teamcity[buildStatisticValue key='GRADLE_RUNNER_RESULT' value='1']")
+
 defaultTasks("assemble")
 
 base.archivesBaseName = "gradle"
