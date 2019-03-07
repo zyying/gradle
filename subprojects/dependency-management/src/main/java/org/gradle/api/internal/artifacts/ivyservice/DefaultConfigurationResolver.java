@@ -51,6 +51,7 @@ import org.gradle.api.internal.artifacts.ivyservice.resolveengine.projectresult.
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.result.AttributeContainerSerializer;
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.result.FileDependencyCollectingGraphVisitor;
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.result.StreamingResolutionResultBuilder;
+import org.gradle.api.internal.artifacts.ivyservice.resolveengine.store.DefaultBinaryStore;
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.store.ResolutionResultsStoreFactory;
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.store.StoreSet;
 import org.gradle.api.internal.artifacts.repositories.ResolutionAwareRepository;
@@ -133,8 +134,28 @@ public class DefaultConfigurationResolver implements ConfigurationResolver {
 
     public void resolveGraph(ConfigurationInternal configuration, ResolverResults results) {
         List<ResolutionAwareRepository> resolutionAwareRepositories = getRepositories();
-        StoreSet stores = storeFactory.createStoreSet();
+        StoreSet stores = new StoreSet() {
+            private final StoreSet delegate = storeFactory.createStoreSet();
 
+            @Override
+            public BinaryStore nextBinaryStore() {
+                BinaryStore binaryStore = delegate.nextBinaryStore();
+                if (binaryStore instanceof DefaultBinaryStore) {
+                    ((DefaultBinaryStore) binaryStore).setLabel(configuration.getDisplayName());
+                }
+                return binaryStore;
+            }
+
+            @Override
+            public Store<ResolvedComponentResult> newModelCache() {
+                return delegate.newModelCache();
+            }
+
+            @Override
+            public Store<TransientConfigurationResults> oldModelCache() {
+                return delegate.oldModelCache();
+            }
+        };
         BinaryStore oldModelStore = stores.nextBinaryStore();
         Store<TransientConfigurationResults> oldModelCache = stores.oldModelCache();
         TransientConfigurationResultsBuilder oldTransientModelBuilder = new TransientConfigurationResultsBuilder(oldModelStore, oldModelCache, moduleIdentifierFactory, buildOperationExecutor);

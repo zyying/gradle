@@ -90,7 +90,7 @@ public class TransientConfigurationResultsBuilder {
                 encoder.writeSmallLong(id);
             }
         });
-        LOG.debug("Flushing resolved configuration data in {}. Wrote root {}.", binaryStore, id);
+        LOG.info("Flushing resolved configuration data in {}. Wrote root {}.", binaryStore, id);
         binaryData = binaryStore.done();
     }
 

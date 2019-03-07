@@ -15,6 +15,8 @@
  */
 package org.gradle.api.internal.artifacts.ivyservice.resolveengine.store;
 
+import org.gradle.api.logging.Logger;
+import org.gradle.api.logging.Logging;
 import org.gradle.cache.internal.BinaryStore;
 import org.gradle.internal.concurrent.CompositeStoppable;
 import org.gradle.internal.io.RandomAccessFileInputStream;
@@ -30,13 +32,19 @@ import java.io.RandomAccessFile;
 
 import static org.gradle.internal.UncheckedException.throwAsUncheckedException;
 
-class DefaultBinaryStore implements BinaryStore, Closeable {
+public class DefaultBinaryStore implements BinaryStore, Closeable {
+    private final static Logger LOG = Logging.getLogger(DefaultBinaryStore.class);
     private File file;
     private StringDeduplicatingKryoBackedEncoder encoder;
     private long offset = -1;
+    private String label;
 
     public DefaultBinaryStore(File file) {
         this.file = file;
+    }
+
+    public void setLabel(String label) {
+        this.label = label;
     }
 
     public void write(WriteAction write) {
@@ -66,28 +74,33 @@ class DefaultBinaryStore implements BinaryStore, Closeable {
     }
 
     public String toString() {
-        return "Binary store in " + file;
+        return "["+ label +"] Binary store in " + file;
     }
 
     public BinaryData done() {
         try {
             if (encoder != null) {
+                LOG.info("Closing encoder for binary store {}", file);
                 encoder.done();
                 encoder.flush();
             }
             return new SimpleBinaryData(file, offset, diagnose());
         } finally {
             offset = -1;
+            LOG.info("Done writing {}: {}", file, diagnose());
         }
     }
 
     public void close() {
+        LOG.info("Closing binary store {}", file);
         try {
             if (encoder != null) {
+                LOG.info("Closing encoder {}", file);
                 encoder.close();
             }
         } finally {
             if (file != null) {
+                LOG.info("Deleting binary store {}", file);
                 file.delete();
             }
             encoder = null;
@@ -119,7 +132,9 @@ class DefaultBinaryStore implements BinaryStore, Closeable {
 
         public <T> T read(BinaryStore.ReadAction<T> readAction) {
             try {
+                LOG.info("Reading from binary store {} offset {}", inputFile, offset);
                 if (decoder == null) {
+                    LOG.info("Creating decoder for binary store {} offset {}", inputFile, offset);
                     RandomAccessFile randomAccess = new RandomAccessFile(inputFile, "r");
                     randomAccess.seek(offset);
                     decoder = new StringDeduplicatingKryoBackedDecoder(new RandomAccessFileInputStream(randomAccess));
@@ -139,6 +154,7 @@ class DefaultBinaryStore implements BinaryStore, Closeable {
             } catch (Exception e) {
                 throw new RuntimeException("Problems cleaning resources of " + sourceDescription, e);
             } finally {
+                LOG.info("Closed reader for {} offset {}", inputFile, offset);
                 decoder = null;
                 resources = null;
             }
