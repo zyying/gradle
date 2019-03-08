@@ -50,6 +50,8 @@ import org.gradle.api.internal.component.UsageContext;
 import org.gradle.api.internal.file.FileCollectionFactory;
 import org.gradle.api.internal.java.JavaLibraryPlatform;
 import org.gradle.api.internal.project.ProjectInternal;
+import org.gradle.api.internal.provider.AbstractReadOnlyProvider;
+import org.gradle.api.internal.provider.CollectionProviderInternal;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.model.ObjectFactory;
@@ -59,6 +61,7 @@ import org.gradle.api.publish.internal.PublicationArtifactSet;
 import org.gradle.api.publish.internal.validation.PublicationWarningsCollector;
 import org.gradle.api.publish.internal.versionmapping.VersionMappingStrategyInternal;
 import org.gradle.api.publish.ivy.IvyArtifact;
+import org.gradle.api.publish.ivy.IvyConfiguration;
 import org.gradle.api.publish.ivy.IvyConfigurationContainer;
 import org.gradle.api.publish.ivy.IvyModuleDescriptorSpec;
 import org.gradle.api.publish.ivy.internal.artifact.DefaultIvyArtifactSet;
@@ -231,6 +234,7 @@ public class DefaultIvyPublication implements IvyPublicationInternal {
         }
         artifactsOverridden = false;
         updateModuleDescriptorArtifact();
+        configurations.addAllLater(new ComponentConfigurationsProvider());
     }
 
     private void populateFromComponent() {
@@ -242,27 +246,10 @@ public class DefaultIvyPublication implements IvyPublicationInternal {
             return;
         }
         PublicationWarningsCollector publicationWarningsCollector = new PublicationWarningsCollector(LOG, UNSUPPORTED_FEATURE, "");
-        configurations.maybeCreate("default");
 
-        Set<PublishArtifact> seenArtifacts = Sets.newHashSet();
         Set<ModuleDependency> seenDependencies = Sets.newHashSet();
         for (UsageContext usageContext : getSortedUsageContexts()) {
             String conf = mapUsage(usageContext.getName());
-            configurations.maybeCreate(conf);
-            if (usageContext instanceof IvyPublishingAwareContext) {
-                if (!((IvyPublishingAwareContext) usageContext).isOptional()) {
-                    configurations.getByName("default").extend(conf);
-                }
-            } else {
-                configurations.getByName("default").extend(conf);
-            }
-
-            for (PublishArtifact publishArtifact : usageContext.getArtifacts()) {
-                if (!artifactsOverridden && seenArtifacts.add(publishArtifact)) {
-                    artifact(publishArtifact).setConf(conf);
-                }
-            }
-
             for (ModuleDependency dependency : usageContext.getDependencies()) {
                 if (seenDependencies.add(dependency)) {
                 // TODO: When we support multiple components or configurable dependencies, we'll need to merge the confs of multiple dependencies with same id.
@@ -334,7 +321,6 @@ public class DefaultIvyPublication implements IvyPublicationInternal {
     }
 
     public IvyConfigurationContainer getConfigurations() {
-        populateFromComponent();
         return configurations;
     }
 
@@ -538,5 +524,50 @@ public class DefaultIvyPublication implements IvyPublicationInternal {
     @Override
     public Set<IvyExcludeRule> getGlobalExcludes() {
         return globalExcludes;
+    }
+
+    private class ComponentConfigurationsProvider extends AbstractReadOnlyProvider<Iterable<IvyConfiguration>> implements CollectionProviderInternal<IvyConfiguration, Iterable<IvyConfiguration>> {
+        @Nullable
+        @Override
+        public Class<Iterable<IvyConfiguration>> getType() {
+            return null;
+        }
+
+        @Nullable
+        @Override
+        public Iterable<IvyConfiguration> getOrNull() {
+            Set<IvyConfiguration> configurations = new LinkedHashSet<>();
+            Set<PublishArtifact> seenArtifacts = Sets.newHashSet();
+            IvyConfiguration defaultConfig = new DefaultIvyConfiguration("default");
+            configurations.add(defaultConfig);
+            for (UsageContext usageContext : getSortedUsageContexts()) {
+                String conf = mapUsage(usageContext.getName());
+                configurations.add(new DefaultIvyConfiguration(conf));
+                if (usageContext instanceof IvyPublishingAwareContext) {
+                    if (!((IvyPublishingAwareContext) usageContext).isOptional()) {
+                        defaultConfig.extend(conf);
+                    }
+                } else {
+                    defaultConfig.extend(conf);
+                }
+
+                for (PublishArtifact publishArtifact : usageContext.getArtifacts()) {
+                    if (!artifactsOverridden && seenArtifacts.add(publishArtifact)) {
+                        artifact(publishArtifact).setConf(conf);
+                    }
+                }
+            }
+            return configurations;
+        }
+
+        @Override
+        public Class<? extends IvyConfiguration> getElementType() {
+            return IvyConfiguration.class;
+        }
+
+        @Override
+        public int size() {
+            return component.getUsages().size() + 1;
+        }
     }
 }
