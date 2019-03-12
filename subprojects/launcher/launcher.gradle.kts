@@ -1,10 +1,12 @@
-import org.gradle.gradlebuild.testing.integrationtests.cleanup.WhenNotEmpty
+
 import org.gradle.build.GradleStartScriptGenerator
 import org.gradle.gradlebuild.test.integrationtests.IntegrationTest
+import org.gradle.gradlebuild.testing.integrationtests.cleanup.WhenNotEmpty
 import org.gradle.gradlebuild.unittestandcompile.ModuleType
 
 plugins {
     gradlebuild.classycle
+    id("com.palantir.graal") version ("0.3.0-2-g6c49b4d")
 }
 
 dependencies {
@@ -99,4 +101,15 @@ configurations {
 
 testFilesCleanup {
     policy.set(WhenNotEmpty.REPORT)
+}
+
+graal {
+    mainClass("org.gradle.launcher.GradleMain")
+    outputName("launcher-native")
+    graalVersion("1.0.0-rc13")
+    option("--report-unsupported-elements-at-runtime")
+    option("--allow-incomplete-classpath")
+    option("-H:ReflectionConfigurationFiles=${file("graal-reflect.json")}")
+    option("-H:DynamicProxyConfigurationFiles=${file("graal-proxies.json")}")
+    option("-H:JNIConfigurationFiles=${file("graal-jni.json")}")
 }

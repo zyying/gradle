@@ -42,7 +42,12 @@ abstract class CurrentGradleInstallationLocator {
     }
 
     static CurrentGradleInstallation locateViaClass(Class<?> clazz) {
-        File dir = findDistDir(clazz);
+        File dir = null;
+        try {
+            dir = findDistDir(clazz);
+        } catch (Exception e) {
+            return new CurrentGradleInstallation(new GradleInstallation(new File(".")));
+        }
         if (dir == null) {
             return new CurrentGradleInstallation(null);
         } else {

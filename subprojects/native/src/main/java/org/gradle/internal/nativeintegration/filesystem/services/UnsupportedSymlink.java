@@ -21,7 +21,7 @@ import org.gradle.internal.nativeintegration.filesystem.Symlink;
 import java.io.File;
 import java.io.IOException;
 
-class UnsupportedSymlink implements Symlink {
+public class UnsupportedSymlink implements Symlink {
     @Override
     public boolean isSymlinkCreationSupported() {
         return false;

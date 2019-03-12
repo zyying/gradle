@@ -1,0 +1,5 @@
+[
+  ["org.gradle.internal.logging.events.OutputEventListener"],
+  ["org.gradle.internal.nativeintegration.filesystem.services.UnavailablePosixFiles"],
+  ["org.gradle.launcher.daemon.client.DaemonStartListener"]
+]

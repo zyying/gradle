@@ -32,8 +32,10 @@ import org.gradle.internal.concurrent.Stoppable;
 import org.gradle.internal.jvm.inspection.JvmVersionDetector;
 import org.gradle.internal.logging.events.OutputEventListener;
 import org.gradle.internal.nativeintegration.services.NativeServices;
+import org.gradle.internal.service.ServiceLookupException;
 import org.gradle.internal.service.ServiceRegistry;
 import org.gradle.internal.service.ServiceRegistryBuilder;
+import org.gradle.internal.service.UnknownServiceException;
 import org.gradle.internal.service.scopes.BasicGlobalScopeServices;
 import org.gradle.internal.service.scopes.GlobalScopeServices;
 import org.gradle.internal.service.scopes.GradleUserHomeScopeServiceRegistry;
@@ -69,7 +71,15 @@ class BuildActionsFactory implements CommandLineAction {
         this.loggingServices = loggingServices;
         fileCollectionFactory = basicServices.get(FileCollectionFactory.class);
         parametersConverter = new ParametersConverter(new BuildLayoutFactory(), basicServices.get(FileCollectionFactory.class));
-        jvmVersionDetector = basicServices.get(JvmVersionDetector.class);
+        JvmVersionDetector detector = null;
+        try {
+            detector = basicServices.get(JvmVersionDetector.class);
+        } catch (UnknownServiceException e) {
+            e.printStackTrace();
+        } catch (ServiceLookupException e) {
+            e.printStackTrace();
+        }
+        jvmVersionDetector = detector;
     }
 
     public void configureCommandLineParser(CommandLineParser parser) {
