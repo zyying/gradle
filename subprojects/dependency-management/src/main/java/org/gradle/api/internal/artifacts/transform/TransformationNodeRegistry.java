@@ -16,10 +16,14 @@
 
 package org.gradle.api.internal.artifacts.transform;
 
+import org.gradle.api.artifacts.component.ComponentArtifactIdentifier;
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.artifact.ResolvedArtifactSet;
 
 import java.util.Collection;
+import java.util.Optional;
 
-public interface TransformationNodeFactory {
+public interface TransformationNodeRegistry {
     Collection<TransformationNode> getOrCreate(ResolvedArtifactSet artifactSet, Transformation transformation, ExecutionGraphDependenciesResolver dependenciesResolver);
+
+    Optional<TransformationNode> getCompleted(ComponentArtifactIdentifier artifactId, Transformation transformation);
 }
