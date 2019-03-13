@@ -19,12 +19,12 @@ package org.gradle.testing.fixture
 import org.gradle.api.JavaVersion
 
 /**
- * NEWEST is JUnit 4 series, i.e. junit:junit:4.12
- * JUPITER is JUnit Jupiter engine, i.e. org.junit.jupiter:junit-jupiter-api:5.1.0
- * VINTAGE is JUnit Vintage engine which supports JUnit 4 tests on top of JUnit Platform, i.e. org.junit.vintage:junit-vintage-engine:5.1.0
+ * NEWEST is JUnit 4 series, i.e. junit:junit
+ * JUPITER is JUnit Jupiter engine, i.e. org.junit.jupiter:junit-jupiter-api
+ * VINTAGE is JUnit Vintage engine which supports JUnit 4 tests on top of JUnit Platform, i.e. org.junit.vintage:junit-vintage-engine
  */
 class JUnitCoverage {
-    final static String NEWEST = '4.12'
+    final static String NEWEST = '4.13-beta-2'
     final static String LATEST_JUPITER_VERSION = '5.4.0'
     final static String LATEST_VINTAGE_VERSION = '5.4.0'
     final static String JUPITER = 'Jupiter:' + LATEST_JUPITER_VERSION

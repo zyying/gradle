@@ -25,8 +25,7 @@ import static org.gradle.testing.fixture.JUnitCoverage.*
 import static org.hamcrest.Matchers.containsString
 import static org.hamcrest.Matchers.is
 
-// https://github.com/junit-team/junit5/issues/1285
-@TargetCoverage({ JUNIT_4_LATEST + emptyIfJava7(JUPITER, VINTAGE) })
+@TargetCoverage({ JUNIT_4_LATEST + JUNIT_VINTAGE_JUPITER })
 class JUnitLoggingOutputCaptureIntegrationTest extends JUnitMultiVersionIntegrationSpec {
     def setup() {
         buildFile << """
@@ -97,14 +96,14 @@ public class OkTest {
         outputContains """Test class OkTest -> class loaded
 Test class OkTest -> before class out
 Test class OkTest -> before class err
-Test class OkTest -> test constructed
+Test ${isJUnitPlatform() ? 'class OkTest' : 'anotherOk(OkTest)'} -> test constructed
 Test anotherOk(OkTest) -> before out
 Test anotherOk(OkTest) -> before err
 Test anotherOk(OkTest) -> ok out
 Test anotherOk(OkTest) -> ok err
 Test anotherOk(OkTest) -> after out
 Test anotherOk(OkTest) -> after err
-Test class OkTest -> test constructed
+Test ${isJUnitPlatform() ? 'class OkTest' : 'ok(OkTest)'} -> test constructed
 Test ok(OkTest) -> before out
 Test ok(OkTest) -> before err
 Test ok(OkTest) -> test out: \u03b1</html>
@@ -119,20 +118,20 @@ Test class OkTest -> after class err
 
         def xmlReport = new JUnitXmlTestExecutionResult(testDirectory)
         def classResult = xmlReport.testClass("OkTest")
-        classResult.assertTestCaseStdout("ok", is("""before out
+        classResult.assertTestCaseStdout("ok", is("""
+${isJUnitPlatform() ? '' : 'test constructed'}
+before out
 test out: \u03b1</html>
 after out
-"""))
+""".stripLeading()))
         classResult.assertTestCaseStderr("ok", is("""before err
 test err
 after err
 """))
         classResult.assertStdout(is("""class loaded
 before class out
-test constructed
-test constructed
-after class out
-"""))
+${isJUnitPlatform() ? 'test constructed\ntest constructed\n' : ''}after class out
+""".toString()))
         classResult.assertStderr(is("""before class err
 after class err
 """))
