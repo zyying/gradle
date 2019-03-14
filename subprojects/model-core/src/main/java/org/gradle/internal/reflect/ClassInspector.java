@@ -17,21 +17,16 @@
 package org.gradle.internal.reflect;
 
 import org.gradle.api.Transformer;
+import org.gradle.api.internal.GeneratedSubclass;
 import org.gradle.cache.internal.CrossBuildInMemoryCache;
 import org.gradle.cache.internal.CrossBuildInMemoryCacheFactory;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 public class ClassInspector {
-    private final CrossBuildInMemoryCache<Class<?>, ClassDetails> cache;
+    private final CrossBuildInMemoryCache<Class<?>, MutableClassDetails> cache;
     private final ClassDetailsClassTransformer classTransformer = new ClassDetailsClassTransformer();
 
     public ClassInspector(CrossBuildInMemoryCacheFactory cacheFactory) {
@@ -45,36 +40,22 @@ public class ClassInspector {
         return cache.get(type, classTransformer);
     }
 
-    private static void visitGraph(Class<?> type, MutableClassDetails classDetails) {
-        Set<Class<?>> seen = new HashSet<Class<?>>();
-        List<Class<?>> queue = new ArrayList<Class<?>>();
+    private void visitGraph(Class<?> type, MutableClassDetails classDetails) {
+        if (GeneratedSubclass.class.isAssignableFrom(type)) {
+            throw new IllegalArgumentException("Should not inspect a generated subclass.");
+        }
 
-        // fully visit the class hierarchy before any interfaces in order to meet the contract
-        // of PropertyDetails.getGetters() etc.
-        queue.add(type);
-        superClasses(type, queue);
-        while (!queue.isEmpty()) {
-            Class<?> current = queue.remove(0);
-            if (!seen.add(current)) {
-                continue;
-            }
-            if (!current.equals(type)) {
-                classDetails.superType(current);
-            }
-            inspectClass(current, classDetails);
-            Collections.addAll(queue, current.getInterfaces());
+        inspectClass(type, classDetails);
+        Class<?> superclass = type.getSuperclass();
+        if (superclass != null) {
+            mergeClassDetails(superclass, classDetails);
+        }
+        for (Class<?> superInterface : type.getInterfaces()) {
+            mergeClassDetails(superInterface, classDetails);
         }
     }
 
-    private static void superClasses(Class<?> current, Collection<Class<?>> supers) {
-        Class<?> superclass = current.getSuperclass();
-        while (superclass != null) {
-            supers.add(superclass);
-            superclass = superclass.getSuperclass();
-        }
-    }
-
-    private static void inspectClass(Class<?> type, MutableClassDetails classDetails) {
+    private void inspectClass(Class<?> type, MutableClassDetails classDetails) {
         for (Method method : type.getDeclaredMethods()) {
             classDetails.method(method);
 
@@ -98,9 +79,14 @@ public class ClassInspector {
         }
     }
 
-    private static class ClassDetailsClassTransformer implements Transformer<ClassDetails, Class<?>> {
+    private void mergeClassDetails(Class<?> type, MutableClassDetails classDetails) {
+        MutableClassDetails details = cache.get(type, classTransformer);
+        details.applyTo(classDetails);
+    }
+
+    private class ClassDetailsClassTransformer implements Transformer<MutableClassDetails, Class<?>> {
         @Override
-        public ClassDetails transform(Class<?> type) {
+        public MutableClassDetails transform(Class<?> type) {
             MutableClassDetails classDetails = new MutableClassDetails(type);
             visitGraph(type, classDetails);
             return classDetails;

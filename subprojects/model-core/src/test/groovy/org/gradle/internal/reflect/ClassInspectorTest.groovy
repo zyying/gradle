@@ -385,7 +385,7 @@ class ClassInspectorTest extends Specification {
 
     def "super types ordered by their distance"() {
         expect:
-        inspect(ArrayList).superTypes.toList() == [AbstractList, AbstractCollection, Object, List, RandomAccess, Cloneable, Serializable, Collection, Iterable]
+        inspect(ArrayList).superTypes.toList() == [AbstractList, AbstractCollection, Object, Collection, Iterable, List, RandomAccess, Cloneable, Serializable, ]
     }
 
     @Issue("GRADLE-3317")

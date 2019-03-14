@@ -55,11 +55,7 @@ public interface ClassDetails {
     List<Field> getAllFields();
 
     /**
-     * The ordered super types of this type.
-     *
-     * Entries are ordered by their “distance” from the target type, nearest to furthest.
-     * Superclasses are considered nearer than implemented interfaces.
-     * Interfaces are ordered by declaration order.
+     * The super types of this type.
      */
     Set<Class<?>> getSuperTypes();
 }

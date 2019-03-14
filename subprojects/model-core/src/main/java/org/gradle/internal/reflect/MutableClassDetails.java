@@ -108,4 +108,29 @@ class MutableClassDetails implements ClassDetails {
     public void field(Field field) {
         fields.add(field);
     }
+
+    public void applyTo(MutableClassDetails classDetails) {
+        classDetails.superType(type);
+        for (Class<?> superType : superTypes) {
+            classDetails.superType(superType);
+        }
+        for (Method method : methods) {
+            classDetails.method(method);
+        }
+        for (Field field : fields) {
+            classDetails.field(field);
+        }
+        for (Method method : instanceMethods) {
+            classDetails.instanceMethod(method);
+        }
+        for (MutablePropertyDetails property : properties.values()) {
+            MutablePropertyDetails destProperty = classDetails.property(property.getName());
+            for (Method getter : property.getGetters()) {
+                destProperty.addGetter(getter);
+            }
+            for (Method setter : property.getSetters()) {
+                destProperty.addSetter(setter);
+            }
+        }
+    }
 }
