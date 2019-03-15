@@ -16,13 +16,14 @@
 
 package org.gradle.internal.reflect;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import org.gradle.api.Action;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -31,33 +32,58 @@ import java.util.TreeMap;
 class MutableClassDetails implements ClassDetails {
     private final Class<?> type;
     private final MethodSet instanceMethods = new MethodSet();
-    private final Map<String, MutablePropertyDetails> properties = new TreeMap<String, MutablePropertyDetails>();
-    private final List<Method> methods = new ArrayList<Method>();
-    private final List<Field> fields = new ArrayList<Field>();
-    private final Set<Class<?>> superTypes = new LinkedHashSet<Class<?>>();
+    private final Map<String, MutablePropertyDetails> properties = new TreeMap<>();
+    private final List<MutableClassDetails> superTypes = new ArrayList<>();
+    private final List<Method> methods;
+    private final List<Field> fields;
 
     MutableClassDetails(Class<?> type) {
         this.type = type;
+        this.methods = ImmutableList.copyOf(type.getDeclaredMethods());
+        this.fields = ImmutableList.copyOf(type.getDeclaredFields());
     }
 
     @Override
-    public List<Method> getAllMethods() {
-        return methods;
+    public void visitAllMethods(Action<? super Method> visitor) {
+        visitDeclaredMethods(visitor);
+        for (MutableClassDetails superType : superTypes) {
+            superType.visitDeclaredMethods(visitor);
+        }
+    }
+
+    private void visitDeclaredMethods(Action<? super Method> visitor) {
+        for (Method method : methods) {
+            visitor.execute(method);
+        }
     }
 
     @Override
-    public List<Field> getAllFields() {
-        return fields;
+    public void visitAllFields(Action<? super Field> visitor) {
+        visitDeclaredFields(visitor);
+        for (MutableClassDetails superType : superTypes) {
+            superType.visitDeclaredFields(visitor);
+        }
+    }
+
+    private void visitDeclaredFields(Action<? super Field> visitor) {
+        for (Field field : fields) {
+            visitor.execute(field);
+        }
     }
 
     @Override
-    public List<Method> getInstanceMethods() {
-        return instanceMethods.getValues();
+    public void visitInstanceMethods(Action<? super Method> visitor) {
+        for (Method method : instanceMethods) {
+            visitor.execute(method);
+        }
     }
 
     @Override
-    public Set<Class<?>> getSuperTypes() {
-        return superTypes;
+    public void visitTypes(Action<? super ClassDetails> visitor) {
+        visitor.execute(this);
+        for (MutableClassDetails superType : superTypes) {
+            visitor.execute(superType);
+        }
     }
 
     /*
@@ -84,12 +110,10 @@ class MutableClassDetails implements ClassDetails {
         return property;
     }
 
-    void superType(Class<?> type) {
-        superTypes.add(type);
-    }
-
-    void method(Method method) {
-        methods.add(method);
+    void superType(MutableClassDetails type) {
+        if (!superTypes.contains(type)) {
+            superTypes.add(type);
+        }
     }
 
     void instanceMethod(Method method) {
@@ -105,20 +129,10 @@ class MutableClassDetails implements ClassDetails {
         return property;
     }
 
-    public void field(Field field) {
-        fields.add(field);
-    }
-
     public void applyTo(MutableClassDetails classDetails) {
-        classDetails.superType(type);
-        for (Class<?> superType : superTypes) {
+        classDetails.superType(this);
+        for (MutableClassDetails superType : superTypes) {
             classDetails.superType(superType);
-        }
-        for (Method method : methods) {
-            classDetails.method(method);
-        }
-        for (Field field : fields) {
-            classDetails.field(field);
         }
         for (Method method : instanceMethods) {
             classDetails.instanceMethod(method);

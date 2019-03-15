@@ -18,6 +18,7 @@ package org.gradle.api.internal.tasks.options;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.gradle.api.Action;
 import org.gradle.api.Transformer;
 import org.gradle.api.internal.GeneratedSubclasses;
 import org.gradle.api.tasks.options.Option;
@@ -114,20 +115,21 @@ public class OptionReader {
 
     private ImmutableList<OptionElement> getOptionElements(ClassDetails classDetails) {
         ImmutableList.Builder<OptionElement> allOptionElements = ImmutableList.builder();
-        allOptionElements.addAll(getMethodAnnotations(classDetails));
-        allOptionElements.addAll(getFieldAnnotations(classDetails));
+        findMethodAnnotations(classDetails, allOptionElements);
+        findFieldAnnotations(classDetails, allOptionElements);
         return allOptionElements.build();
     }
 
-    private List<OptionElement> getFieldAnnotations(ClassDetails classDetails) {
-        List<OptionElement> fieldOptionElements = new ArrayList<OptionElement>();
-        for (Field field : classDetails.getAllFields()) {
-            Option option = findOption(field);
-            if (option != null) {
-                fieldOptionElements.add(FieldOptionElement.create(option, field, optionValueNotationParserFactory));
+    private void findFieldAnnotations(ClassDetails classDetails, final ImmutableList.Builder<OptionElement> elementBuilder) {
+        classDetails.visitAllFields(new Action<Field>() {
+            @Override
+            public void execute(Field field) {
+                Option option = findOption(field);
+                if (option != null) {
+                    elementBuilder.add(FieldOptionElement.create(option, field, optionValueNotationParserFactory));
+                }
             }
-        }
-        return fieldOptionElements;
+        });
     }
 
     private Option findOption(Field field) {
@@ -141,17 +143,18 @@ public class OptionReader {
         return option;
     }
 
-    private List<OptionElement> getMethodAnnotations(ClassDetails classDetails) {
-        List<OptionElement> methodOptionElements = new ArrayList<OptionElement>();
-        for (Method method : classDetails.getAllMethods()) {
-            Option option = findOption(method);
-            if (option != null) {
-                OptionElement methodOptionDescriptor = MethodOptionElement.create(option, method,
-                    optionValueNotationParserFactory);
-                methodOptionElements.add(methodOptionDescriptor);
+    private void findMethodAnnotations(ClassDetails classDetails, final ImmutableList.Builder<OptionElement> elementBuilder) {
+        classDetails.visitAllMethods(new Action<Method>() {
+            @Override
+            public void execute(Method method) {
+                Option option = findOption(method);
+                if (option != null) {
+                    OptionElement methodOptionDescriptor = MethodOptionElement.create(option, method,
+                        optionValueNotationParserFactory);
+                    elementBuilder.add(methodOptionDescriptor);
+                }
             }
-        }
-        return methodOptionElements;
+        });
     }
 
     private Option findOption(Method method) {
@@ -165,14 +168,17 @@ public class OptionReader {
         return option;
     }
 
-    private static List<JavaMethod<Object, Collection>> loadValueMethodForOption(Class<?> targetClass, ClassDetails classDetails) {
-        List<JavaMethod<Object, Collection>> methods = new ArrayList<JavaMethod<Object, Collection>>();
-        for (Method method : classDetails.getAllMethods()) {
-            JavaMethod<Object, Collection> optionValuesMethod = getAsOptionValuesMethod(targetClass, method);
-            if (optionValuesMethod != null) {
-                methods.add(optionValuesMethod);
+    private static List<JavaMethod<Object, Collection>> loadValueMethodForOption(final Class<?> targetClass, ClassDetails classDetails) {
+        final List<JavaMethod<Object, Collection>> methods = new ArrayList<JavaMethod<Object, Collection>>();
+        classDetails.visitAllMethods(new Action<Method>() {
+            @Override
+            public void execute(Method method) {
+                JavaMethod<Object, Collection> optionValuesMethod = getAsOptionValuesMethod(targetClass, method);
+                if (optionValuesMethod != null) {
+                    methods.add(optionValuesMethod);
+                }
             }
-        }
+        });
         return methods;
     }
 

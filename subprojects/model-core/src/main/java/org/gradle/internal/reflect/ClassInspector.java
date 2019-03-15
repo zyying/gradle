@@ -21,7 +21,6 @@ import org.gradle.api.internal.GeneratedSubclass;
 import org.gradle.cache.internal.CrossBuildInMemoryCache;
 import org.gradle.cache.internal.CrossBuildInMemoryCacheFactory;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
@@ -34,7 +33,7 @@ public class ClassInspector {
     }
 
     /**
-     * Extracts a view of the given class. Ignores private methods.
+     * Extracts a view of the given type.
      */
     public ClassDetails inspect(Class<?> type) {
         return cache.get(type, classTransformer);
@@ -46,6 +45,7 @@ public class ClassInspector {
         }
 
         inspectClass(type, classDetails);
+
         Class<?> superclass = type.getSuperclass();
         if (superclass != null) {
             mergeClassDetails(superclass, classDetails);
@@ -57,8 +57,6 @@ public class ClassInspector {
 
     private void inspectClass(Class<?> type, MutableClassDetails classDetails) {
         for (Method method : type.getDeclaredMethods()) {
-            classDetails.method(method);
-
             if (Modifier.isPrivate(method.getModifiers()) || Modifier.isStatic(method.getModifiers())) {
                 continue;
             }
@@ -73,9 +71,6 @@ public class ClassInspector {
             } else {
                 classDetails.instanceMethod(method);
             }
-        }
-        for (Field field : type.getDeclaredFields()) {
-            classDetails.field(field);
         }
     }
 

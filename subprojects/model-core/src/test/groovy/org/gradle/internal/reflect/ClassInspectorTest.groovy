@@ -20,6 +20,11 @@ import org.gradle.cache.internal.TestCrossBuildInMemoryCacheFactory
 import spock.lang.Issue
 import spock.lang.Specification
 
+import static org.gradle.internal.reflect.ClassInspectorTestHelper.AbstractSubClass
+import static org.gradle.internal.reflect.ClassInspectorTestHelper.AbstractSuperClass
+import static org.gradle.internal.reflect.ClassInspectorTestHelper.SomeInterface
+import static org.gradle.internal.reflect.ClassInspectorTestHelper.SubInterface
+
 class ClassInspectorTest extends Specification {
     def inspector = new ClassInspector(new TestCrossBuildInMemoryCacheFactory())
 
@@ -56,7 +61,7 @@ class ClassInspectorTest extends Specification {
         details.propertyNames == ['class', 'metaClass', 'a', 'b', 'URL', 'url', '_A'] as Set
     }
 
-    def "extracts properties of a Groovy interface"() {
+    def "extracts properties of a Java interface"() {
         expect:
         def details = inspect(SomeInterface)
 
@@ -153,7 +158,7 @@ class ClassInspectorTest extends Specification {
         expect:
         def details = inspect(AbstractSubClass)
 
-        details.propertyNames == ['class', 'metaClass', 'prop', 'readOnly', 'writeOnly', 'other'] as Set
+        details.propertyNames == ['class', 'prop', 'readOnly', 'writeOnly', 'other'] as Set
 
         def prop = details.getProperty('prop')
         prop.getters.size() == 1
@@ -170,6 +175,62 @@ class ClassInspectorTest extends Specification {
         def writeOnly = details.getProperty('writeOnly')
         writeOnly.getters.size() == 0
         writeOnly.setters.size() == 1
+    }
+
+    def "extracts methods from super type graph"() {
+        when:
+        def methods = []
+        def details = inspect(AbstractSubClass)
+        details.visitAllMethods { methods.add(it) }
+
+        then:
+        methods == (AbstractSubClass.declaredMethods as List) +
+            (AbstractSuperClass.declaredMethods as List) +
+            (Object.class.declaredMethods as List) +
+            (SomeInterface.class.declaredMethods as List) +
+            (SubInterface.class.declaredMethods as List)
+    }
+
+    def "extracts instance methods from super type graph"() {
+        when:
+        def methods = []
+        def details = inspect(AbstractSubClass)
+        details.visitInstanceMethods { methods.add(it) }
+
+        then:
+        // Duplicate signatures are discarded
+        // Order is not stable, so sort the result
+        methods.collect { it.declaringClass.simpleName + "." + it.name }.sort() == [
+                "AbstractSubClass.thing",
+                "Object.clone",
+                "Object.equals",
+                "Object.finalize",
+                "Object.hashCode",
+                "Object.notify",
+                "Object.notifyAll",
+                "Object.toString",
+                "Object.wait",
+                "Object.wait",
+                "Object.wait",
+                "SomeInterface.get",
+                "SomeInterface.getProp",
+                "SomeInterface.set",
+                "SomeInterface.setProp"
+        ]
+    }
+
+    def "extracts fields from super type graph"() {
+        when:
+        def fields = []
+        def details = inspect(AbstractSubClass)
+        details.visitAllFields { fields.add(it) }
+
+        then:
+        fields == (AbstractSubClass.declaredFields as List) +
+            (AbstractSuperClass.declaredFields as List) +
+            (Object.class.declaredFields as List) +
+            (SomeInterface.class.declaredFields as List) +
+            (SubInterface.class.declaredFields as List)
     }
 
     def "subtype can specialize a property type"() {
@@ -223,6 +284,12 @@ class ClassInspectorTest extends Specification {
         return inspector.inspect(type)
     }
 
+    def superTypes(Class<?> type) {
+        def result = []
+        inspect(type).visitTypes { result.add(it.type) }
+        return result
+    }
+
     class SomeClass {
         Number prop
 
@@ -259,24 +326,6 @@ class ClassInspectorTest extends Specification {
         static Long getLong() {
             return 12L
         }
-    }
-
-    interface SomeInterface {
-        Number getProp()
-
-        void setProp(Number value)
-
-        String getReadOnly()
-
-        void setWriteOnly(String value)
-
-        void get()
-
-        void set(String value)
-
-        void getProp(String value)
-
-        void setProp()
     }
 
     class PropNames {
@@ -329,20 +378,6 @@ class ClassInspectorTest extends Specification {
         Long other
     }
 
-    interface SubInterface extends SomeInterface {
-        Long getOther()
-
-        void setOther(Long l)
-    }
-
-    abstract class AbstractSuperClass implements SomeInterface {
-        Number prop
-    }
-
-    abstract class AbstractSubClass extends AbstractSuperClass implements SubInterface {
-        Long other
-    }
-
     class Overrides extends SomeClass {
         @Override
         Number getProp() {
@@ -378,14 +413,14 @@ class ClassInspectorTest extends Specification {
 
     def "can extract super types"() {
         expect:
-        inspect(Object).superTypes.empty
-        inspect(Serializable).superTypes.empty
-        inspect(List).superTypes.toList() == [Collection, Iterable]
+        superTypes(Object) == [Object]
+        superTypes(Serializable) == [Serializable]
+        superTypes(List) == [List, Collection, Iterable]
     }
 
     def "super types ordered by their distance"() {
         expect:
-        inspect(ArrayList).superTypes.toList() == [AbstractList, AbstractCollection, Object, Collection, Iterable, List, RandomAccess, Cloneable, Serializable, ]
+        superTypes(ArrayList) == [ArrayList, AbstractList, AbstractCollection, Object, Collection, Iterable, List, RandomAccess, Cloneable, Serializable ]
     }
 
     @Issue("GRADLE-3317")

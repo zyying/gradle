@@ -220,11 +220,14 @@ abstract class AbstractClassGenerator implements ClassGenerator {
             handler.startType(type);
         }
 
-        for (Method method : classDetails.getAllMethods()) {
-            for (ClassValidator validator : validators) {
-                validator.validateMethod(method, PropertyAccessorType.of(method));
+        classDetails.visitAllMethods(new Action<Method>() {
+            @Override
+            public void execute(Method method) {
+                for (ClassValidator validator : validators) {
+                    validator.validateMethod(method, PropertyAccessorType.of(method));
+                }
             }
-        }
+        });
 
         for (PropertyDetails property : classDetails.getProperties()) {
             PropertyMetadata propertyMetaData = classMetaData.property(property.getName());
@@ -260,25 +263,30 @@ abstract class AbstractClassGenerator implements ClassGenerator {
             }
         }
 
-        for (Method method : classDetails.getInstanceMethods()) {
-            assertNotAbstract(type, method);
-            for (ClassGenerationHandler handler : generationHandlers) {
-                handler.visitInstanceMethod(method);
+        classDetails.visitInstanceMethods(new Action<Method>() {
+            @Override
+            public void execute(Method method) {
+                assertNotAbstract(type, method);
+                for (ClassGenerationHandler handler : generationHandlers) {
+                    handler.visitInstanceMethod(method);
+                }
             }
-        }
+        });
 
         visitFields(classDetails, generationHandlers);
     }
 
     private void visitFields(ClassDetails classDetails, List<ClassGenerationHandler> generationHandlers) {
-        for (Field field : classDetails.getAllFields()) {
-            if (!Modifier.isStatic(field.getModifiers())) {
-                for (ClassGenerationHandler handler : generationHandlers) {
-                    handler.hasFields();
+        classDetails.visitAllFields(new Action<Field>() {
+            @Override
+            public void execute(Field field) {
+                if (!Modifier.isStatic(field.getModifiers())) {
+                    for (ClassGenerationHandler handler : generationHandlers) {
+                        handler.hasFields();
+                    }
                 }
-                return;
             }
-        }
+        });
     }
 
     private void assembleProperties(ClassDetails classDetails, ClassMetadata classMetaData) {
@@ -291,15 +299,18 @@ abstract class AbstractClassGenerator implements ClassGenerator {
                 propertyMetaData.addSetter(method);
             }
         }
-        for (Method method : classDetails.getInstanceMethods()) {
-            Class<?>[] parameterTypes = method.getParameterTypes();
-            if (parameterTypes.length == 1) {
-                PropertyMetadata propertyMetaData = classMetaData.getProperty(method.getName());
-                if (propertyMetaData != null) {
-                    propertyMetaData.addSetMethod(method);
+        classDetails.visitInstanceMethods(new Action<Method>() {
+            @Override
+            public void execute(Method method) {
+                Class<?>[] parameterTypes = method.getParameterTypes();
+                if (parameterTypes.length == 1) {
+                    PropertyMetadata propertyMetaData = classMetaData.getProperty(method.getName());
+                    if (propertyMetaData != null) {
+                        propertyMetaData.addSetMethod(method);
+                    }
                 }
             }
-        }
+        });
     }
 
     private void assertNotAbstract(Class<?> type, Method method) {

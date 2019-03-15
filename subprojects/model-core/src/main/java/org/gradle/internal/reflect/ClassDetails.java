@@ -16,10 +16,11 @@
 
 package org.gradle.internal.reflect;
 
+import org.gradle.api.Action;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Collection;
-import java.util.List;
 import java.util.Set;
 
 public interface ClassDetails {
@@ -39,23 +40,24 @@ public interface ClassDetails {
     PropertyDetails getProperty(String name) throws NoSuchPropertyException;
 
     /**
-     * Returns all methods of this class, including all inherited, private and static methods.
+     * Visits all methods of this class, including all inherited, overridden, private, abstract, synthetic and static methods.
      */
-    List<Method> getAllMethods();
+    void visitAllMethods(Action<? super Method> visitor);
 
     /**
-     * Returns the non-private instance methods of this class that are not property getter or setter methods.
-     * Includes inherited methods.
+     * Visits the non-private non-static methods of this class that are not property getter or setter methods.
+     * Includes inherited methods but not overridden methods so that each method signature is visited once.
      */
-    List<Method> getInstanceMethods();
+    void visitInstanceMethods(Action<? super Method> visitor);
 
     /**
-     * Returns all fields of this class, including all inherited, private and static fields.
+     * Visits all fields of this class, including all inherited, private, synthetic and static fields.
      */
-    List<Field> getAllFields();
+    void visitAllFields(Action<? super Field> visitor);
 
     /**
-     * The super types of this type.
+     * Visits this type and each of its super types.
      */
-    Set<Class<?>> getSuperTypes();
+    void visitTypes(Action<? super ClassDetails> visitor);
+
 }
