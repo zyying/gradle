@@ -18,7 +18,6 @@ package org.gradle.api.internal.artifacts.transform;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSortedMap;
-import com.google.common.reflect.TypeToken;
 import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.artifacts.transform.InputArtifact;
 import org.gradle.api.artifacts.transform.InputArtifactDependencies;
@@ -38,7 +37,6 @@ import org.gradle.api.internal.tasks.properties.OutputFilePropertyType;
 import org.gradle.api.internal.tasks.properties.PropertyValue;
 import org.gradle.api.internal.tasks.properties.PropertyVisitor;
 import org.gradle.api.internal.tasks.properties.PropertyWalker;
-import org.gradle.api.reflect.InjectionPointQualifier;
 import org.gradle.api.tasks.FileNormalizer;
 import org.gradle.internal.classloader.ClassLoaderHierarchyHasher;
 import org.gradle.internal.exceptions.DefaultMultiCauseException;
@@ -55,7 +53,7 @@ import org.gradle.internal.isolation.Isolatable;
 import org.gradle.internal.isolation.IsolatableFactory;
 import org.gradle.internal.reflect.ParameterValidationContext;
 import org.gradle.internal.service.ServiceLookup;
-import org.gradle.internal.service.ServiceLookupException;
+import org.gradle.internal.service.ServiceLookupWithInjectionPoints;
 import org.gradle.internal.service.UnknownServiceException;
 import org.gradle.internal.snapshot.ValueSnapshot;
 import org.gradle.internal.snapshot.ValueSnapshotter;
@@ -64,12 +62,10 @@ import org.gradle.work.InputChanges;
 
 import javax.annotation.Nullable;
 import java.io.File;
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class DefaultTransformer extends AbstractTransformer<TransformAction> {
@@ -290,7 +286,7 @@ public class DefaultTransformer extends AbstractTransformer<TransformAction> {
         return isolatedParameters;
     }
 
-    private static class TransformServiceLookup implements ServiceLookup {
+    private static class TransformServiceLookup extends ServiceLookupWithInjectionPoints {
         private final ImmutableList<InjectionPoint> injectionPoints;
 
         public TransformServiceLookup(File inputFile, @Nullable TransformParameters parameters, @Nullable ArtifactTransformDependencies artifactTransformDependencies, @Nullable InputChanges inputChanges) {
@@ -312,80 +308,9 @@ public class DefaultTransformer extends AbstractTransformer<TransformAction> {
             this.injectionPoints = builder.build();
         }
 
-        @Nullable
-        private Object find(Type serviceType, @Nullable Class<? extends Annotation> annotatedWith) {
-            TypeToken<?> serviceTypeToken = TypeToken.of(serviceType);
-            for (InjectionPoint injectionPoint : injectionPoints) {
-                if (annotatedWith == injectionPoint.getAnnotation() && serviceTypeToken.isSupertypeOf(injectionPoint.getInjectedType())) {
-                    return injectionPoint.getValueToInject();
-                }
-            }
-            return null;
-        }
-
-        @Nullable
         @Override
-        public Object find(Type serviceType) throws ServiceLookupException {
-            return find(serviceType, null);
-        }
-
-        @Override
-        public Object get(Type serviceType) throws UnknownServiceException, ServiceLookupException {
-            Object result = find(serviceType);
-            if (result == null) {
-                throw new UnknownServiceException(serviceType, "No service of type " + serviceType + " available.");
-            }
-            return result;
-        }
-
-        @Override
-        public Object get(Type serviceType, Class<? extends Annotation> annotatedWith) throws UnknownServiceException, ServiceLookupException {
-            Object result = find(serviceType, annotatedWith);
-            if (result == null) {
-                throw new UnknownServiceException(serviceType, "No service of type " + serviceType + " available.");
-            }
-            return result;
-        }
-
-        private static class InjectionPoint {
-            private final Class<? extends Annotation> annotation;
-            private final Class<?> injectedType;
-            private final Supplier<Object> valueToInject;
-
-            public static InjectionPoint injectedByAnnotation(Class<? extends Annotation> annotation, Supplier<Object> valueToInject) {
-                return new InjectionPoint(annotation, determineTypeFromAnnotation(annotation), valueToInject);
-            }
-
-            public static InjectionPoint injectedByType(Class<?> injectedType, Supplier<Object> valueToInject) {
-                return new InjectionPoint(null, injectedType, valueToInject);
-            }
-
-            private InjectionPoint(@Nullable Class<? extends Annotation> annotation, Class<?> injectedType, Supplier<Object> valueToInject) {
-                this.annotation = annotation;
-                this.injectedType = injectedType;
-                this.valueToInject = valueToInject;
-            }
-
-            private static Class<?> determineTypeFromAnnotation(Class<? extends Annotation> annotation) {
-                Class<?>[] supportedTypes = annotation.getAnnotation(InjectionPointQualifier.class).supportedTypes();
-                if (supportedTypes.length != 1) {
-                    throw new IllegalArgumentException("Cannot determine supported type for annotation " + annotation.getName());
-                }
-                return supportedTypes[0];
-            }
-
-            @Nullable
-            public Class<? extends Annotation> getAnnotation() {
-                return annotation;
-            }
-
-            public Class<?> getInjectedType() {
-                return injectedType;
-            }
-
-            public Object getValueToInject() {
-                return valueToInject.get();
-            }
+        public Collection<InjectionPoint> getInjectionPoints() {
+            return injectionPoints;
         }
     }
 

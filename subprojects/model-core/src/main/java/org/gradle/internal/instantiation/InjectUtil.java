@@ -16,9 +16,11 @@
 
 package org.gradle.internal.instantiation;
 
+import org.gradle.internal.Cast;
 import org.gradle.internal.logging.text.TreeFormatter;
 
 import javax.inject.Inject;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +42,20 @@ class InjectUtil {
             if (constructor.getParameterTypes().length == 0 && isPublicOrPackageScoped(type.getGeneratedClass(), constructor)) {
                 return constructor;
             }
-            if (constructor.getAnnotation(Inject.class) != null) {
+
+            // If this class comes from an isolated classloader, use the Inject class loaded there
+            Class<? extends Annotation> injectClass = null;
+            try {
+                injectClass = Cast.uncheckedCast(type.getGeneratedClass().getClassLoader().loadClass(Inject.class.getName()));
+            } catch (ClassNotFoundException e) {
+                // default to the Inject class visible in this classloader
+            }
+
+            if (injectClass == null) {
+                injectClass = Inject.class;
+            }
+
+            if (constructor.getAnnotation(injectClass) != null) {
                 return constructor;
             }
             if (constructor.getParameterTypes().length == 0) {

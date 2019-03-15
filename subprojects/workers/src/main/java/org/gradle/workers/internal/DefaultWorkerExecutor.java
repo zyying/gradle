@@ -23,6 +23,8 @@ import org.gradle.internal.classloader.ClasspathUtil;
 import org.gradle.internal.classloader.FilteringClassLoader;
 import org.gradle.internal.exceptions.Contextual;
 import org.gradle.internal.exceptions.DefaultMultiCauseException;
+import org.gradle.internal.instantiation.InstantiatorFactory;
+import org.gradle.internal.isolation.IsolatableFactory;
 import org.gradle.internal.operations.BuildOperationExecutor;
 import org.gradle.internal.operations.BuildOperationRef;
 import org.gradle.internal.resources.ResourceLock;
@@ -39,10 +41,12 @@ import org.gradle.process.internal.JavaForkOptionsFactory;
 import org.gradle.process.internal.worker.child.WorkerDirectoryProvider;
 import org.gradle.util.CollectionUtils;
 import org.gradle.workers.IsolationMode;
+import org.gradle.workers.WorkAction;
 import org.gradle.workers.WorkerConfiguration;
 import org.gradle.workers.WorkerExecutionException;
 import org.gradle.workers.WorkerExecutor;
 
+import javax.inject.Inject;
 import java.io.File;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -57,8 +61,13 @@ public class DefaultWorkerExecutor implements WorkerExecutor {
     private final BuildOperationExecutor buildOperationExecutor;
     private final AsyncWorkTracker asyncWorkTracker;
     private final WorkerDirectoryProvider workerDirectoryProvider;
+    private final InstantiatorFactory instantiatorFactory;
+    private final IsolatableFactory isolatableFactory;
 
-    public DefaultWorkerExecutor(WorkerFactory daemonWorkerFactory, WorkerFactory isolatedClassloaderWorkerFactory, WorkerFactory noIsolationWorkerFactory, JavaForkOptionsFactory forkOptionsFactory, WorkerLeaseRegistry workerLeaseRegistry, BuildOperationExecutor buildOperationExecutor, AsyncWorkTracker asyncWorkTracker, WorkerDirectoryProvider workerDirectoryProvider, WorkerExecutionQueueFactory workerExecutionQueueFactory) {
+    public DefaultWorkerExecutor(WorkerFactory daemonWorkerFactory, WorkerFactory isolatedClassloaderWorkerFactory, WorkerFactory noIsolationWorkerFactory,
+                                 JavaForkOptionsFactory forkOptionsFactory, WorkerLeaseRegistry workerLeaseRegistry, BuildOperationExecutor buildOperationExecutor,
+                                 AsyncWorkTracker asyncWorkTracker, WorkerDirectoryProvider workerDirectoryProvider, WorkerExecutionQueueFactory workerExecutionQueueFactory,
+                                 InstantiatorFactory instantiatorFactory, IsolatableFactory isolatableFactory) {
         this.daemonWorkerFactory = daemonWorkerFactory;
         this.isolatedClassloaderWorkerFactory = isolatedClassloaderWorkerFactory;
         this.noIsolationWorkerFactory = noIsolationWorkerFactory;
@@ -68,29 +77,41 @@ public class DefaultWorkerExecutor implements WorkerExecutor {
         this.buildOperationExecutor = buildOperationExecutor;
         this.asyncWorkTracker = asyncWorkTracker;
         this.workerDirectoryProvider = workerDirectoryProvider;
+        this.instantiatorFactory = instantiatorFactory;
+        this.isolatableFactory = isolatableFactory;
     }
 
     @Override
     public void submit(Class<? extends Runnable> actionClass, Action<? super WorkerConfiguration> configAction) {
-        WorkerConfiguration configuration = new DefaultWorkerConfiguration(forkOptionsFactory);
+        WrappedParameters parameterObject = instantiatorFactory.injectScheme().instantiator().newInstance(WrappedParameters.class);
+        //WrappedParameters parameterObject = new DefaultWrappedParameters();
+        submitWorkAction(RunnableWorkAction.class, actionClass, parameterObject, configAction);
+    }
+
+    // TODO: this becomes generic when we change the public api
+    private void submitWorkAction(Class<? extends WorkAction<WrappedParameters>> actionClass, Class<?> wrappedImplementationClass, WrappedParameters parameterObject, Action<? super WorkerConfiguration<WrappedParameters>> configAction) {
+        WorkerConfiguration<WrappedParameters> configuration = new DefaultWorkerConfiguration<WrappedParameters>(forkOptionsFactory, parameterObject);
         File workingDirectory = workerDirectoryProvider.getWorkingDirectory();
         configuration.getForkOptions().setWorkingDir(workingDirectory);
         configAction.execute(configuration);
+
+        // TODO: this goes away when we change the public api
+        configuration.getParameters().setParams(configuration.getParams());
+
         String description = configuration.getDisplayName() != null ? configuration.getDisplayName() : actionClass.getName();
 
         if (!workingDirectory.equals(configuration.getForkOptions().getWorkingDir())) {
             throw new WorkExecutionException(description + ": setting the working directory of a worker is not supported.");
         }
 
-        // Serialize parameters in this thread prior to starting work in a separate thread
-        ActionExecutionSpec spec;
+        ActionExecutionSpec<WrappedParameters> spec;
         try {
-            spec = new SerializingActionExecutionSpec(actionClass, description, configuration.getParams());
+            spec = new WrappedActionExecutionSpec<WrappedParameters>(actionClass, description, isolatableFactory.isolate(configuration.getParameters()).isolate(), wrappedImplementationClass);
         } catch (Throwable t) {
             throw new WorkExecutionException(description, t);
         }
 
-        submit(spec, configuration.getIsolationMode(), getDaemonForkOptions(actionClass, configuration));
+        submit(spec, configuration.getIsolationMode(), getDaemonForkOptions(wrappedImplementationClass, configuration));
     }
 
     private void submit(final ActionExecutionSpec spec, final IsolationMode isolationMode, final DaemonForkOptions daemonForkOptions) {
@@ -163,7 +184,7 @@ public class DefaultWorkerExecutor implements WorkerExecutor {
 
     DaemonForkOptions getDaemonForkOptions(Class<?> actionClass, WorkerConfiguration configuration) {
         validateWorkerConfiguration(configuration);
-        Iterable<Class<?>> paramTypes = CollectionUtils.collect(configuration.getParams(), new Transformer<Class<?>, Object>() {
+        List<Class<?>> paramTypes = CollectionUtils.collect(configuration.getParams(), new Transformer<Class<?>, Object>() {
             @Override
             public Class<?> transform(Object o) {
                 return o.getClass();
@@ -210,16 +231,16 @@ public class DefaultWorkerExecutor implements WorkerExecutor {
         ImmutableSet.Builder<File> classpathBuilder = ImmutableSet.builder();
         ImmutableSet.Builder<String> sharedPackagesBuilder = ImmutableSet.builder();
 
-        sharedPackagesBuilder.add("javax.inject");
+        //sharedPackagesBuilder.add("javax.inject");
 
         if (classpath != null) {
             classpathBuilder.addAll(classpath);
         }
 
-        addVisibilityFor(actionClass, classpathBuilder, sharedPackagesBuilder, true);
+        addVisibilityFor(actionClass, classpathBuilder, sharedPackagesBuilder);
 
         for (Class<?> paramClass : paramClasses) {
-            addVisibilityFor(paramClass, classpathBuilder, sharedPackagesBuilder, false);
+            addVisibilityFor(paramClass, classpathBuilder, sharedPackagesBuilder);
         }
 
         Iterable<File> daemonClasspath = classpathBuilder.build();
@@ -237,14 +258,12 @@ public class DefaultWorkerExecutor implements WorkerExecutor {
             .build();
     }
 
-    private static void addVisibilityFor(Class<?> visibleClass, ImmutableSet.Builder<File> classpathBuilder, ImmutableSet.Builder<String> sharedPackagesBuilder, boolean addToSharedPackages) {
+    private static void addVisibilityFor(Class<?> visibleClass, ImmutableSet.Builder<File> classpathBuilder, ImmutableSet.Builder<String> sharedPackagesBuilder) {
         if (visibleClass.getClassLoader() != null) {
             classpathBuilder.addAll(ClasspathUtil.getClasspath(visibleClass.getClassLoader()).getAsFiles());
         }
 
-        if (addToSharedPackages) {
-            addVisiblePackage(visibleClass, sharedPackagesBuilder);
-        }
+        addVisiblePackage(visibleClass, sharedPackagesBuilder);
     }
 
     private static void addVisiblePackage(Class<?> visibleClass, ImmutableSet.Builder<String> sharedPackagesBuilder) {
@@ -331,6 +350,19 @@ public class DefaultWorkerExecutor implements WorkerExecutor {
                 throw new IllegalStateException("Detected attempt to access LazyChildWorkerLeaseLock before tryLock() has succeeded.  tryLock must be succeed before other methods are called.");
             }
             return child;
+        }
+    }
+
+    public static abstract class RunnableWorkAction implements WrappedWorkAction<WrappedParameters> {
+        @Inject
+        protected InstantiatorFactory getInstantiatorFactory() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void execute() {
+            Runnable runnable = (Runnable) getInstantiatorFactory().inject().newInstance(getWrappedImplementationClass(), getParameters().getParams());
+            runnable.run();
         }
     }
 }

@@ -18,14 +18,20 @@ package org.gradle.api.internal.tasks.compile.daemon;
 import com.google.common.collect.Lists;
 import org.gradle.api.tasks.WorkResult;
 import org.gradle.api.tasks.compile.BaseForkOptions;
+import org.gradle.internal.Cast;
 import org.gradle.internal.UncheckedException;
+import org.gradle.internal.instantiation.InstantiatorFactory;
 import org.gradle.language.base.internal.compile.CompileSpec;
 import org.gradle.language.base.internal.compile.Compiler;
+import org.gradle.workers.internal.HasWorkResult;
+import org.gradle.workers.internal.WrappedActionExecutionSpec;
+import org.gradle.workers.internal.WrappedParameters;
 import org.gradle.workers.internal.DaemonForkOptions;
 import org.gradle.workers.internal.DefaultWorkResult;
-import org.gradle.workers.internal.SimpleActionExecutionSpec;
 import org.gradle.workers.internal.Worker;
 import org.gradle.workers.internal.WorkerFactory;
+import org.gradle.workers.internal.DefaultWrappedParameters;
+import org.gradle.workers.internal.WrappedWorkAction;
 
 import javax.inject.Inject;
 import java.util.Set;
@@ -51,7 +57,8 @@ public abstract class AbstractDaemonCompiler<T extends CompileSpec> implements C
     public WorkResult execute(T spec) {
         DaemonForkOptions daemonForkOptions = toDaemonForkOptions(spec);
         Worker worker = workerFactory.getWorker(daemonForkOptions);
-        DefaultWorkResult result = worker.execute(new SimpleActionExecutionSpec(CompilerCallable.class, "compiler daemon", new Object[] {delegate, spec}));
+        WrappedParameters wrappedParameters = new DefaultWrappedParameters(new Object[] {delegate, spec});
+        DefaultWorkResult result = worker.execute(new WrappedActionExecutionSpec<WrappedParameters>(WrappedCallableWorkAction.class, "compiler daemon", wrappedParameters, CompilerCallable.class));
         if (result.isSuccess()) {
             return result;
         } else {
@@ -84,6 +91,37 @@ public abstract class AbstractDaemonCompiler<T extends CompileSpec> implements C
         @Override
         public WorkResult call() throws Exception {
             return compiler.execute(compileSpec);
+        }
+    }
+
+    private abstract static class WrappedCallableWorkAction implements WrappedWorkAction<WrappedParameters>, HasWorkResult {
+        private WorkResult workResult;
+
+        @Inject
+        InstantiatorFactory getInstantiatorFactory() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public WorkResult getWorkResult() {
+            return workResult;
+        }
+
+        @Override
+        public void execute() {
+            Callable<?> callable = Cast.uncheckedCast(getInstantiatorFactory().inject().newInstance(getWrappedImplementationClass(), getParameters().getParams()));
+            try {
+                Object result = callable.call();
+                if (result instanceof DefaultWorkResult) {
+                    workResult = (DefaultWorkResult) result;
+                } else if (result instanceof WorkResult) {
+                    workResult = new DefaultWorkResult(((WorkResult) result).getDidWork(), null);
+                } else {
+                    throw new IllegalArgumentException("Worker actions must return a WorkResult.");
+                }
+            } catch (Throwable t) {
+                workResult = new DefaultWorkResult(true, t);
+            }
         }
     }
 }

@@ -25,20 +25,33 @@ import org.gradle.process.internal.JavaForkOptionsFactory;
 import org.gradle.util.GUtil;
 import org.gradle.workers.ForkMode;
 import org.gradle.workers.IsolationMode;
+import org.gradle.workers.WorkParameters;
 import org.gradle.workers.WorkerConfiguration;
 
 import java.io.File;
 import java.util.List;
 
-public class DefaultWorkerConfiguration extends DefaultActionConfiguration implements WorkerConfiguration {
+public class DefaultWorkerConfiguration<T extends WorkParameters> extends DefaultActionConfiguration implements WorkerConfiguration<T> {
     private final JavaForkOptions forkOptions;
     private IsolationMode isolationMode = IsolationMode.AUTO;
     private List<File> classpath = Lists.newArrayList();
     private String displayName;
+    private final T parameters;
 
-    public DefaultWorkerConfiguration(JavaForkOptionsFactory forkOptionsFactory) {
+    public DefaultWorkerConfiguration(JavaForkOptionsFactory forkOptionsFactory, T parameters) {
         this.forkOptions = forkOptionsFactory.newJavaForkOptions();
         forkOptions.setEnvironment(Maps.<String, Object>newHashMap());
+        this.parameters = parameters;
+    }
+
+    @Override
+    public T getParameters() {
+        return parameters;
+    }
+
+    @Override
+    public void parameters(Action<? super T> action) {
+        action.execute(parameters);
     }
 
     @Override

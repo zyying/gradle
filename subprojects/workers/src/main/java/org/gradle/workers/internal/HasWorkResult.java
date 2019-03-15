@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,17 +16,8 @@
 
 package org.gradle.workers.internal;
 
-import org.gradle.api.Describable;
-import org.gradle.workers.WorkAction;
-import org.gradle.workers.WorkParameters;
+import org.gradle.api.tasks.WorkResult;
 
-import java.io.Serializable;
-
-public interface ActionExecutionSpec<T extends WorkParameters> extends Serializable, Describable {
-    Class<? extends WorkAction<T>> getImplementationClass();
-
-    @Override
-    String getDisplayName();
-
-    T getParameters();
+public interface HasWorkResult {
+    WorkResult getWorkResult();
 }

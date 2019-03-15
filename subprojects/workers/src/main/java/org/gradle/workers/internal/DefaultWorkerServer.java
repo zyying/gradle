@@ -16,47 +16,111 @@
 
 package org.gradle.workers.internal;
 
+import com.google.common.collect.ImmutableList;
 import org.gradle.api.tasks.WorkResult;
-import org.gradle.internal.reflect.Instantiator;
+import org.gradle.internal.instantiation.InstantiationScheme;
+import org.gradle.internal.instantiation.InstantiatorFactory;
+import org.gradle.internal.isolation.Isolatable;
+import org.gradle.internal.isolation.IsolatableFactory;
+import org.gradle.internal.service.ServiceLookup;
+import org.gradle.internal.service.ServiceLookupWithInjectionPoints;
+import org.gradle.internal.service.UnknownServiceException;
+import org.gradle.workers.WorkAction;
+import org.gradle.workers.WorkParameters;
+import org.gradle.workers.WorkerExecutor;
 
 import javax.inject.Inject;
-import java.util.concurrent.Callable;
+import java.util.Collection;
+import java.util.function.Supplier;
 
 public class DefaultWorkerServer implements WorkerProtocol {
-    private final Instantiator instantiator;
+    private final InstantiatorFactory instantiatorFactory;
+    private final WorkerExecutor workerExecutor;
 
     @Inject
-    public DefaultWorkerServer(Instantiator instantiator) {
-        this.instantiator = instantiator;
+    public DefaultWorkerServer(InstantiatorFactory instantiatorFactory, WorkerExecutor workerExecutor) {
+        this.instantiatorFactory = instantiatorFactory;
+        this.workerExecutor = workerExecutor;
     }
 
     @Override
-    public DefaultWorkResult execute(ActionExecutionSpec spec) {
+    public DefaultWorkResult execute(ActionExecutionSpec<? extends WorkParameters> spec) {
         try {
-            Class<?> implementationClass = spec.getImplementationClass();
-            Object action = instantiator.newInstance(implementationClass, spec.getParams(implementationClass.getClassLoader()));
-            if (action instanceof Runnable) {
-                ((Runnable) action).run();
-                return new DefaultWorkResult(true, null);
-            } else if (action instanceof Callable) {
-                Object result = ((Callable) action).call();
-                if (result instanceof DefaultWorkResult) {
-                    return (DefaultWorkResult) result;
-                } else if (result instanceof WorkResult) {
-                    return new DefaultWorkResult(((WorkResult) result).getDidWork(), null);
-                } else {
-                    throw new IllegalArgumentException("Worker actions must return a WorkResult.");
-                }
-            } else {
-                throw new IllegalArgumentException("Worker actions must either implement Runnable or Callable<WorkResult>.");
+            ServiceLookup services = new WorkActionServiceLookup(spec.getParameters(), workerExecutor, instantiatorFactory);
+            WorkAction action = instantiatorFactory.injectScheme().forType(spec.getImplementationClass()).newInstance(services);
+            if (action instanceof WrappedWorkAction) {
+                ((WrappedWorkAction) action).setWrappedImplementationClass(((WrappedActionExecutionSpec)spec).getWrappedImplementationClass());
             }
+            action.execute();
+            return getWorkResult(action);
         } catch (Throwable t) {
             return new DefaultWorkResult(true, t);
+        }
+    }
+
+    private DefaultWorkResult getWorkResult(WorkAction<?> workAction) {
+        if (workAction instanceof HasWorkResult) {
+            WorkResult workResult = ((HasWorkResult) workAction).getWorkResult();
+            if (workResult instanceof DefaultWorkResult) {
+                return (DefaultWorkResult) workResult;
+            } else {
+                return new DefaultWorkResult(workResult.getDidWork(), null);
+            }
+        } else {
+            return new DefaultWorkResult(true, null);
         }
     }
 
     @Override
     public String toString() {
         return "DefaultWorkerServer{}";
+    }
+
+    private static class WorkActionServiceLookup extends ServiceLookupWithInjectionPoints {
+        private final ImmutableList<InjectionPoint> injectionPoints;
+
+        public WorkActionServiceLookup(final WorkParameters parameters, final WorkerExecutor workerExecutor, final InstantiatorFactory instantiatorFactory) {
+            ImmutableList.Builder<InjectionPoint> builder = ImmutableList.builder();
+            if (parameters != null) {
+                builder.add(InjectionPoint.injectedByType(parameters.getClass(), new Supplier<Object>() {
+                    @Override
+                    public Object get() {
+                        return parameters;
+                    }
+                }));
+            } else {
+                builder.add(InjectionPoint.injectedByType(WorkParameters.None.class, new Supplier<Object>() {
+                    @Override
+                    public Object get() {
+                        throw new UnknownServiceException(WorkParameters.None.class, "Cannot query parameters for a work implementation without parameters.");
+                    }
+                }));
+            }
+
+            if (workerExecutor != null) {
+                builder.add(InjectionPoint.injectedByType(WorkerExecutor.class, new Supplier<Object>() {
+                    @Override
+                    public Object get() {
+                        return workerExecutor;
+                    }
+                }));
+            }
+
+            if (instantiatorFactory != null) {
+                builder.add(InjectionPoint.injectedByType(InstantiatorFactory.class, new Supplier<Object>() {
+                    @Override
+                    public Object get() {
+                        return instantiatorFactory;
+                    }
+                }));
+            }
+
+            this.injectionPoints = builder.build();
+        }
+
+        @Override
+        public Collection<InjectionPoint> getInjectionPoints() {
+            return injectionPoints;
+        }
     }
 }

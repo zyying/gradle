@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,31 @@
  * limitations under the License.
  */
 
-package org.gradle.workers.internal;
+package org.gradle.workers;
 
-import org.gradle.api.Describable;
-import org.gradle.workers.WorkAction;
-import org.gradle.workers.WorkParameters;
+import org.gradle.api.Incubating;
 
-import java.io.Serializable;
+import javax.inject.Inject;
 
-public interface ActionExecutionSpec<T extends WorkParameters> extends Serializable, Describable {
-    Class<? extends WorkAction<T>> getImplementationClass();
-
-    @Override
-    String getDisplayName();
-
+/**
+ * Interface for Worker API units of work.
+ *
+ * @param <T>
+ *
+ * @since 5.4
+ */
+@Incubating
+public interface WorkAction<T extends WorkParameters> {
+    /**
+     * The parameters provided for a given unit of work.
+     *
+     * @return the parameters for this unit of work
+     */
+    @Inject
     T getParameters();
+
+    /**
+     * The implementation of the unit of work.
+     */
+    void execute();
 }

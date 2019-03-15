@@ -21,6 +21,7 @@ import org.gradle.internal.event.DefaultListenerManager;
 import org.gradle.internal.instantiation.DefaultInstantiatorFactory;
 import org.gradle.internal.instantiation.InjectAnnotationHandler;
 import org.gradle.internal.instantiation.InstantiatorFactory;
+import org.gradle.internal.isolation.IsolatableFactory;
 
 import java.util.Collections;
 
@@ -29,7 +30,7 @@ public class WorkerDaemonServer extends DefaultWorkerServer {
     private static final InstantiatorFactory INSTANTIATOR_FACTORY = new DefaultInstantiatorFactory(new DefaultCrossBuildInMemoryCacheFactory(new DefaultListenerManager()), Collections.<InjectAnnotationHandler>emptyList());
 
     public WorkerDaemonServer() {
-        super(INSTANTIATOR_FACTORY.inject());
+        super(INSTANTIATOR_FACTORY, null);
     }
 
     @Override

@@ -18,6 +18,7 @@ package org.gradle.workers.internal;
 
 import org.gradle.api.internal.classloading.GroovySystemLoader;
 import org.gradle.api.internal.classloading.GroovySystemLoaderFactory;
+import org.gradle.api.internal.initialization.loadercache.DefaultClasspathHasher;
 import org.gradle.api.logging.LogLevel;
 import org.gradle.api.logging.Logger;
 import org.gradle.cache.internal.DefaultCrossBuildInMemoryCacheFactory;
@@ -25,7 +26,10 @@ import org.gradle.internal.UncheckedException;
 import org.gradle.internal.classloader.CachingClassLoader;
 import org.gradle.internal.classloader.ClassLoaderFactory;
 import org.gradle.internal.classloader.ClasspathUtil;
+import org.gradle.internal.classloader.ConfigurableClassLoaderHierarchyHasher;
+import org.gradle.internal.classloader.DefaultHashingClassLoaderFactory;
 import org.gradle.internal.classloader.FilteringClassLoader;
+import org.gradle.internal.classloader.HashingClassLoaderFactory;
 import org.gradle.internal.classloader.MultiParentClassLoader;
 import org.gradle.internal.classloader.VisitableURLClassLoader;
 import org.gradle.internal.classpath.DefaultClassPath;
@@ -34,12 +38,15 @@ import org.gradle.internal.event.DefaultListenerManager;
 import org.gradle.internal.instantiation.DefaultInstantiatorFactory;
 import org.gradle.internal.instantiation.InjectAnnotationHandler;
 import org.gradle.internal.io.ClassLoaderObjectInputStream;
+import org.gradle.internal.isolation.IsolatableFactory;
 import org.gradle.internal.operations.BuildOperationExecutor;
 import org.gradle.internal.operations.BuildOperationRef;
 import org.gradle.internal.serialize.ExceptionReplacingObjectInputStream;
 import org.gradle.internal.serialize.ExceptionReplacingObjectOutputStream;
+import org.gradle.internal.snapshot.impl.DefaultValueSnapshotter;
 import org.gradle.util.GUtil;
 import org.gradle.workers.IsolationMode;
+import org.gradle.workers.WorkAction;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -48,17 +55,20 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.concurrent.Callable;
 
 public class IsolatedClassloaderWorkerFactory implements WorkerFactory {
 
     private final ClassLoaderFactory classLoaderFactory;
     private final BuildOperationExecutor buildOperationExecutor;
+    private final IsolatableFactory isolatableFactory;
     private final GroovySystemLoaderFactory groovySystemLoaderFactory = new GroovySystemLoaderFactory();
 
-    public IsolatedClassloaderWorkerFactory(ClassLoaderFactory classLoaderFactory, BuildOperationExecutor buildOperationExecutor) {
+    public IsolatedClassloaderWorkerFactory(ClassLoaderFactory classLoaderFactory, BuildOperationExecutor buildOperationExecutor, IsolatableFactory isolatableFactory) {
         this.classLoaderFactory = classLoaderFactory;
         this.buildOperationExecutor = buildOperationExecutor;
+        this.isolatableFactory = isolatableFactory;
     }
 
     @Override
@@ -84,7 +94,7 @@ public class IsolatedClassloaderWorkerFactory implements WorkerFactory {
     private DefaultWorkResult executeInWorkerClassLoader(ActionExecutionSpec spec, DaemonForkOptions forkOptions) {
         ClassLoader actionClasspathLoader = createActionClasspathLoader(forkOptions);
         GroovySystemLoader actionClasspathGroovy = groovySystemLoaderFactory.forClassLoader(actionClasspathLoader);
-        ClassLoader workerClassLoader = createWorkerClassLoader(actionClasspathLoader, forkOptions.getSharedPackages(), spec.getClass());
+        ClassLoader workerClassLoader = createWorkerClassLoader(actionClasspathLoader, forkOptions.getSharedPackages(), spec.getClass(), spec.getParameters().getClass());
 
         ClassLoader previousContextLoader = Thread.currentThread().getContextClassLoader();
         try {
@@ -105,7 +115,7 @@ public class IsolatedClassloaderWorkerFactory implements WorkerFactory {
         return classLoaderFactory.createIsolatedClassLoader("worker-action-loader", DefaultClassPath.of(forkOptions.getClasspath()));
     }
 
-    private ClassLoader createWorkerClassLoader(ClassLoader actionClasspathLoader, Iterable<String> sharedPackages, Class<?> actionClass) {
+    private ClassLoader createWorkerClassLoader(ClassLoader actionClasspathLoader, Iterable<String> sharedPackages, Class<?> actionClass, Class<?> parameterClass) {
         FilteringClassLoader.Spec actionFilterSpec = new FilteringClassLoader.Spec();
         for (String packageName : sharedPackages) {
             actionFilterSpec.allowPackage(packageName);
@@ -121,12 +131,15 @@ public class IsolatedClassloaderWorkerFactory implements WorkerFactory {
         gradleApiFilterSpec.allowPackage("org.gradle.internal.nativeintegration");
         gradleApiFilterSpec.allowPackage("org.gradle.internal.nativeplatform");
         gradleApiFilterSpec.allowPackage("net.rubygrapefruit.platform");
+        // Workers
+        gradleApiFilterSpec.allowPackage("org.gradle.workers");
+
         // TODO:pm Add Gradle API and a way to opt out of it (for compiler workers)
         ClassLoader gradleApiLoader = classLoaderFactory.createFilteringClassLoader(actionClass.getClassLoader(), gradleApiFilterSpec);
 
         ClassLoader actionAndGradleApiLoader = new CachingClassLoader(new MultiParentClassLoader(gradleApiLoader, actionFilteredClasspathLoader));
 
-        return new VisitableURLClassLoader("worker-loader", actionAndGradleApiLoader, ClasspathUtil.getClasspath(actionClass.getClassLoader()));
+        return actionAndGradleApiLoader;
     }
 
     private Callable<?> transferWorkerIntoWorkerClassloader(ActionExecutionSpec spec, ClassLoader workerClassLoader) throws IOException, ClassNotFoundException {
@@ -161,7 +174,7 @@ public class IsolatedClassloaderWorkerFactory implements WorkerFactory {
         public Object call() throws Exception {
             // TODO - reuse these services, either by making the global instances visible or by reusing the worker ClassLoaders and retaining a reference to them
             DefaultInstantiatorFactory instantiatorFactory = new DefaultInstantiatorFactory(new DefaultCrossBuildInMemoryCacheFactory(new DefaultListenerManager()), Collections.<InjectAnnotationHandler>emptyList());
-            WorkerProtocol worker = new DefaultWorkerServer(instantiatorFactory.inject());
+            WorkerProtocol worker = new DefaultWorkerServer(instantiatorFactory,null);
             return worker.execute(spec);
         }
     }

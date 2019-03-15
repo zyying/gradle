@@ -46,7 +46,7 @@ import java.io.File;
  *
  * @since 3.5
  */
-public interface WorkerConfiguration extends Describable, ActionConfiguration {
+public interface WorkerConfiguration<T extends WorkParameters> extends Describable, ActionConfiguration {
     /**
      * Adds a set of files to the classpath associated with the worker.
      *
@@ -127,4 +127,18 @@ public interface WorkerConfiguration extends Describable, ActionConfiguration {
     @Nullable
     @Override
     String getDisplayName();
+
+    /**
+     * The parameters for the unit of work.
+     *
+     * @since 5.4
+     */
+    T getParameters();
+
+    /**
+     * Configure the parameters for the unit of work.
+     *
+     * @since 5.4
+     */
+    void parameters(Action<? super T> action);
 }
