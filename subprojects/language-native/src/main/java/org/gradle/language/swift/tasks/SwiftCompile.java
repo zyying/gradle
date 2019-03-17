@@ -56,6 +56,7 @@ import org.gradle.nativeplatform.toolchain.internal.NativeToolChainInternal;
 import org.gradle.nativeplatform.toolchain.internal.PlatformToolProvider;
 import org.gradle.nativeplatform.toolchain.internal.compilespec.SwiftCompileSpec;
 import org.gradle.nativeplatform.toolchain.internal.swift.IncrementalSwiftCompiler;
+import org.gradle.work.FileChange;
 import org.gradle.work.InputChanges;
 
 import javax.inject.Inject;
@@ -274,6 +275,26 @@ public class SwiftCompile extends DefaultTask {
         final List<File> removedFiles = Lists.newArrayList();
         final Set<File> changedFiles = Sets.newHashSet();
         boolean isIncremental = inputs.isIncremental();
+
+        // TODO: This should become smarter and move into the compiler infrastructure instead
+        // of the task, similar to how the other native languages are done.
+        // For now, this does a rudimentary incremental build analysis by looking at
+        // which files changed and marking the compilation incremental or not.
+        if (isIncremental) {
+            for (FileChange change : inputs.getFileChanges(getSource())) {
+                switch (change.getChangeType()) {
+                    case ADDED:
+                    case MODIFIED:
+                        changedFiles.add(change.getFile());
+                        break;
+                    case REMOVED:
+                        removedFiles.add(change.getFile());
+                        break;
+                    default:
+                        throw new AssertionError("Unkown change type: " + change.getChangeType());
+                }
+            }
+        }
 
         BuildOperationLogger operationLogger = getServices().get(BuildOperationLoggerFactory.class).newOperationLogger(getName(), getTemporaryDir());
 
