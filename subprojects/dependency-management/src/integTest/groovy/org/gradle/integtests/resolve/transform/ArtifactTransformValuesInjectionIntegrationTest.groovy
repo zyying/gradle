@@ -368,8 +368,8 @@ class ArtifactTransformValuesInjectionIntegrationTest extends AbstractDependency
         then:
         failure.assertHasDescription('A problem occurred evaluating root project')
         failure.assertHasCause('Could not create an instance of type MakeGreen$Parameters.')
-        failure.assertHasCause('Could not generate a decorated class for interface MakeGreen$Parameters.')
-        failure.assertHasCause("Cannot use @${annotation.simpleName} annotation on method Parameters.getBad().")
+        failure.assertHasCause("""Found some problems with interface MakeGreen\$Parameters:
+  - Cannot use unsupported @${annotation.simpleName} annotation on method Parameters.getBad().""")
 
         where:
         annotation << [InputArtifact, InputArtifactDependencies]
@@ -604,7 +604,8 @@ abstract class MakeGreen extends ArtifactTransform {
         fails(":a:resolve")
 
         then:
-        failure.assertHasCause("Cannot use @${annotation.simpleName} annotation on method MakeGreen.getInputFile().")
+        failure.assertHasCause("""Found some problems with class MakeGreen:
+  - Cannot use unsupported @${annotation.simpleName} annotation on method MakeGreen.getInputFile().""")
 
         where:
         annotation << [InputArtifact, InputArtifactDependencies]
@@ -778,8 +779,8 @@ abstract class MakeGreen implements TransformAction<TransformParameters.None> {
         fails('broken')
         failure.assertHasDescription("A problem occurred evaluating root project")
         failure.assertHasCause("Could not create task of type 'MyTask'.")
-        failure.assertHasCause("Could not generate a decorated class for class MyTask.")
-        failure.assertHasCause("Cannot use @${annotation.simpleName} annotation on method MyTask.getThing().")
+        failure.assertHasCause("""Found some problems with class MyTask:
+  - Cannot use unsupported @${annotation.simpleName} annotation on method MyTask.getThing().""")
 
         where:
         annotation << [InputArtifact, InputArtifactDependencies]

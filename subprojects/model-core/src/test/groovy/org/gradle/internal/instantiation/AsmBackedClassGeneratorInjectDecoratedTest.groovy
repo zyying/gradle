@@ -264,7 +264,7 @@ class AsmBackedClassGeneratorInjectDecoratedTest extends AbstractClassGeneratorS
 
         then:
         def e = thrown(ClassGenerationException)
-        e.cause.message == """Found some problems with class ${MultipleInjectAnnotations.name}:
+        e.message == """Found some problems with class ${MultipleInjectAnnotations.name}:
   - Cannot use @Inject and @CustomInject annotations together on method MultipleInjectAnnotations.getBoth()."""
     }
 
@@ -296,7 +296,7 @@ class AsmBackedClassGeneratorInjectDecoratedTest extends AbstractClassGeneratorS
 
         then:
         def e = thrown(ClassGenerationException)
-        e.cause.message == """Found some problems with class ${FinalInjectBean.name}:
+        e.message == """Found some problems with class ${FinalInjectBean.name}:
   - Cannot use @Inject annotation on method FinalInjectBean.getThing() as it is final."""
     }
 
@@ -306,7 +306,7 @@ class AsmBackedClassGeneratorInjectDecoratedTest extends AbstractClassGeneratorS
 
         then:
         def e = thrown(ClassGenerationException)
-        e.cause.message == """Found some problems with class ${StaticInjectBean.name}:
+        e.message == """Found some problems with class ${StaticInjectBean.name}:
   - Cannot use @Inject annotation on method StaticInjectBean.getThing() as it is static."""
     }
 
@@ -316,7 +316,7 @@ class AsmBackedClassGeneratorInjectDecoratedTest extends AbstractClassGeneratorS
 
         then:
         def e = thrown(ClassGenerationException)
-        e.cause.message == """Found some problems with class ${PrivateInjectBean.name}:
+        e.message == """Found some problems with class ${PrivateInjectBean.name}:
   - Cannot use @Inject annotation on method PrivateInjectBean.getThing() as it is not public or protected."""
     }
 
@@ -326,7 +326,7 @@ class AsmBackedClassGeneratorInjectDecoratedTest extends AbstractClassGeneratorS
 
         then:
         def e = thrown(ClassGenerationException)
-        e.cause.message == """Found some problems with class ${NonGetterInjectBean.name}:
+        e.message == """Found some problems with class ${NonGetterInjectBean.name}:
   - Cannot use @Inject annotation on method NonGetterInjectBean.thing() as it is not a property getter."""
     }
 
@@ -338,7 +338,7 @@ class AsmBackedClassGeneratorInjectDecoratedTest extends AbstractClassGeneratorS
 
         then:
         def e = thrown(ClassGenerationException)
-        e.cause.message == """Found some problems with class ${BeanWithCustomServices.name}:
+        e.message == """Found some problems with class ${BeanWithCustomServices.name}:
   - Cannot use unsupported @CustomInject annotation on method BeanWithCustomServices.getThing()."""
     }
 
@@ -350,7 +350,7 @@ class AsmBackedClassGeneratorInjectDecoratedTest extends AbstractClassGeneratorS
 
         then:
         def e = thrown(ClassGenerationException)
-        e.cause.message == """Found some problems with class ${StaticCustomInjectBean.name}:
+        e.message == """Found some problems with class ${StaticCustomInjectBean.name}:
   - Cannot use unsupported @CustomInject annotation on method StaticCustomInjectBean.getThing()."""
     }
 
@@ -373,7 +373,7 @@ class AsmBackedClassGeneratorInjectDecoratedTest extends AbstractClassGeneratorS
 
         then:
         def e = thrown(ClassGenerationException)
-        e.cause.message == """Found some problems with class ${StaticCustomInjectBean.name}:
+        e.message == """Found some problems with class ${StaticCustomInjectBean.name}:
   - Cannot use @CustomInject annotation on method StaticCustomInjectBean.getThing() as it is static."""
     }
 
@@ -385,7 +385,7 @@ class AsmBackedClassGeneratorInjectDecoratedTest extends AbstractClassGeneratorS
 
         then:
         def e1 = thrown(ClassGenerationException)
-        e1.cause.message == """Found some problems with class ${BeanWithInheritedProblems.name}:
+        e1.message == """Found some problems with class ${BeanWithInheritedProblems.name}:
   - Cannot use @Inject annotation on method BeanWithInheritedProblems.getBroken() as it is final.
   - Cannot use @CustomInject annotation on method BeanWithInheritedProblems.getBroken() as it is final.
   - Cannot use @Inject and @CustomInject annotations together on method BeanWithInheritedProblems.getBroken().
@@ -397,7 +397,7 @@ class AsmBackedClassGeneratorInjectDecoratedTest extends AbstractClassGeneratorS
 
         then:
         def e2 = thrown(ClassGenerationException)
-        e2.cause.message == """Found some problems with class ${BeanWithMoreInheritedProblems.name}:
+        e2.message == """Found some problems with class ${BeanWithMoreInheritedProblems.name}:
   - Cannot use @CustomInject annotation on method BeanWithMoreInheritedProblems.thing() as it is not a property getter.
   - Cannot use @Inject annotation on method BeanWithInheritedProblems.getBroken() as it is final.
   - Cannot use @CustomInject annotation on method BeanWithInheritedProblems.getBroken() as it is final.

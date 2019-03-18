@@ -242,7 +242,7 @@ abstract class AbstractClassGenerator implements ClassGenerator {
                 formatter.node(problem);
             }
             formatter.endChildren();
-            throw new IllegalArgumentException(formatter.toString());
+            throw new ClassGenerationException(formatter.toString());
         }
 
         for (PropertyDetails property : classDetails.getProperties()) {
