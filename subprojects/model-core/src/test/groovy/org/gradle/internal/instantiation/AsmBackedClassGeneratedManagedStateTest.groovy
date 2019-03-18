@@ -16,6 +16,7 @@
 
 package org.gradle.internal.instantiation
 
+import org.gradle.cache.internal.TestCrossBuildInMemoryCacheFactory
 import org.gradle.internal.state.Managed
 import org.gradle.test.fixtures.file.TestNameTestDirectoryProvider
 import org.gradle.util.TestUtil
@@ -42,7 +43,7 @@ class AsmBackedClassGeneratedManagedStateTest extends AbstractClassGeneratorSpec
     @ClassRule
     @Shared
     TestNameTestDirectoryProvider tmpDir = new TestNameTestDirectoryProvider()
-    final ClassGenerator generator = AsmBackedClassGenerator.injectOnly([], [], TestUtil.classInspector())
+    final ClassGenerator generator = AsmBackedClassGenerator.injectOnly([], [], TestUtil.classInspector(), new TestCrossBuildInMemoryCacheFactory())
 
     def canConstructInstanceOfAbstractClassWithAbstractPropertyGetterAndSetter() {
         def bean = create(BeanWithAbstractProperty)

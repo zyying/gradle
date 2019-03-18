@@ -42,6 +42,7 @@ import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.SetProperty;
+import org.gradle.cache.internal.CrossBuildInMemoryCacheFactory;
 import org.gradle.internal.UncheckedException;
 import org.gradle.internal.extensibility.ConventionAwareHelper;
 import org.gradle.internal.logging.text.TreeFormatter;
@@ -117,8 +118,8 @@ public class AsmBackedClassGenerator extends AbstractClassGenerator {
         return SERVICES_FOR_NEXT_OBJECT.get().services;
     }
 
-    private AsmBackedClassGenerator(boolean decorate, String suffix, Collection<? extends InjectAnnotationHandler> allKnownAnnotations, Collection<Class<? extends Annotation>> enabledAnnotations, ClassInspector classInspector) {
-        super(allKnownAnnotations, enabledAnnotations, classInspector);
+    private AsmBackedClassGenerator(boolean decorate, String suffix, Collection<? extends InjectAnnotationHandler> allKnownAnnotations, Collection<Class<? extends Annotation>> enabledAnnotations, ClassInspector classInspector, CrossBuildInMemoryCacheFactory cacheFactory) {
+        super(allKnownAnnotations, enabledAnnotations, classInspector, cacheFactory);
         this.decorate = decorate;
         this.suffix = suffix;
         // TODO - this isn't correct, fix this. It's just enough to get the tests to pass
@@ -128,17 +129,17 @@ public class AsmBackedClassGenerator extends AbstractClassGenerator {
     /**
      * Returns a generator that applies DSL mix-in, extensibility and service injection for generated classes.
      */
-    static ClassGenerator decorateAndInject(Collection<? extends InjectAnnotationHandler> allKnownAnnotations, Collection<Class<? extends Annotation>> enabledAnnotations, ClassInspector classInspector) {
+    static ClassGenerator decorateAndInject(Collection<? extends InjectAnnotationHandler> allKnownAnnotations, Collection<Class<? extends Annotation>> enabledAnnotations, ClassInspector classInspector, CrossBuildInMemoryCacheFactory cacheFactory) {
         // TODO wolfs: We use `_Decorated` here, since IDEA import currently relies on this
         // See https://github.com/gradle/gradle/issues/8244
-        return new AsmBackedClassGenerator(true, "_Decorated", allKnownAnnotations, enabledAnnotations, classInspector);
+        return new AsmBackedClassGenerator(true, "_Decorated", allKnownAnnotations, enabledAnnotations, classInspector, cacheFactory);
     }
 
     /**
      * Returns a generator that applies service injection only for generated classes, and will generate classes only if required.
      */
-    static ClassGenerator injectOnly(Collection<? extends InjectAnnotationHandler> allKnownAnnotations, Collection<Class<? extends Annotation>> enabledAnnotations, ClassInspector classInspector) {
-        return new AsmBackedClassGenerator(false, "$Inject", allKnownAnnotations, enabledAnnotations, classInspector);
+    static ClassGenerator injectOnly(Collection<? extends InjectAnnotationHandler> allKnownAnnotations, Collection<Class<? extends Annotation>> enabledAnnotations, ClassInspector classInspector, CrossBuildInMemoryCacheFactory cacheFactory) {
+        return new AsmBackedClassGenerator(false, "$Inject", allKnownAnnotations, enabledAnnotations, classInspector, cacheFactory);
     }
 
     @Override

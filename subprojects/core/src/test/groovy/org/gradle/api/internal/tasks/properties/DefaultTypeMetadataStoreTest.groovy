@@ -43,6 +43,7 @@ import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.OutputFiles
 import org.gradle.cache.internal.TestCrossBuildInMemoryCacheFactory
+import org.gradle.internal.reflect.DefaultParameterValidationContext
 import org.gradle.internal.reflect.ParameterValidationContext
 import org.gradle.internal.reflect.PropertyMetadata
 import org.gradle.internal.scripts.ScriptOrigin

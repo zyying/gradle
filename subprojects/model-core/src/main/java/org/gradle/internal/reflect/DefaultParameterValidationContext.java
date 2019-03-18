@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-package org.gradle.api.internal.tasks.properties;
-
-import org.gradle.internal.reflect.ParameterValidationContext;
+package org.gradle.internal.reflect;
 
 import javax.annotation.Nullable;
 import java.util.Collection;

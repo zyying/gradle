@@ -24,6 +24,8 @@ import java.util.Collection;
 import java.util.Set;
 
 public interface ClassDetails {
+    Class<?> getType();
+
     /**
      * Returns the non-private properties of this class. Includes inherited properties
      */
@@ -40,9 +42,19 @@ public interface ClassDetails {
     PropertyDetails getProperty(String name) throws NoSuchPropertyException;
 
     /**
+     * Visits this type and each of its super types.
+     */
+    void visitTypes(Action<? super ClassDetails> visitor);
+
+    /**
      * Visits all methods of this class, including all inherited, overridden, private, abstract, synthetic and static methods.
      */
     void visitAllMethods(Action<? super Method> visitor);
+
+    /**
+     * Visits all declared methods of this class, including all private, abstract, synthetic and static methods.
+     */
+    void visitDeclaredMethods(Action<? super Method> visitor);
 
     /**
      * Visits the non-private non-static methods of this class that are not property getter or setter methods.
@@ -56,8 +68,7 @@ public interface ClassDetails {
     void visitAllFields(Action<? super Field> visitor);
 
     /**
-     * Visits this type and each of its super types.
+     * Visits the instance fields of this class, including all inherited, private, synthetic fields.
      */
-    void visitTypes(Action<? super ClassDetails> visitor);
-
+    void visitInstanceFields(Action<? super Field> visitor);
 }

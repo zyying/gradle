@@ -43,6 +43,7 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.provider.SetProperty;
 import org.gradle.api.reflect.HasPublicType;
 import org.gradle.api.reflect.TypeOf;
+import org.gradle.cache.internal.TestCrossBuildInMemoryCacheFactory;
 import org.gradle.internal.extensibility.ConventionAwareHelper;
 import org.gradle.internal.extensibility.ExtensibleDynamicObject;
 import org.gradle.internal.extensibility.NoConventionMapping;
@@ -101,7 +102,7 @@ import static org.junit.Assert.fail;
 public class AsmBackedClassGeneratorTest {
     @Rule
     public TestNameTestDirectoryProvider tmpDir = new TestNameTestDirectoryProvider();
-    private final ClassGenerator generator = AsmBackedClassGenerator.decorateAndInject(Collections.emptyList(), Collections.emptyList(), TestUtil.classInspector());
+    private final ClassGenerator generator = AsmBackedClassGenerator.decorateAndInject(Collections.emptyList(), Collections.emptyList(), TestUtil.classInspector(), new TestCrossBuildInMemoryCacheFactory());
 
     private <T> T newInstance(Class<T> clazz, Object... args) throws Exception {
         DefaultServiceRegistry services = new DefaultServiceRegistry();
@@ -1553,7 +1554,7 @@ public class AsmBackedClassGeneratorTest {
 
     public static class FinalInjectBean {
         @Inject
-        final Number getThing() {
+        final protected Number getThing() {
             throw new UnsupportedOperationException();
         }
     }

@@ -20,6 +20,7 @@ package org.gradle.api.internal.tasks.properties
 import org.gradle.api.internal.tasks.properties.annotations.PropertyAnnotationHandler
 import org.gradle.cache.internal.TestCrossBuildInMemoryCacheFactory
 import org.gradle.internal.instantiation.InstantiationScheme
+import org.gradle.internal.reflect.DefaultParameterValidationContext
 import spock.lang.Specification
 
 import java.lang.annotation.Retention

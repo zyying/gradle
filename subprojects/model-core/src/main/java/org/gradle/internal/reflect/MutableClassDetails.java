@@ -22,6 +22,7 @@ import org.gradle.api.Action;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -44,6 +45,11 @@ class MutableClassDetails implements ClassDetails {
     }
 
     @Override
+    public Class<?> getType() {
+        return type;
+    }
+
+    @Override
     public void visitAllMethods(Action<? super Method> visitor) {
         visitDeclaredMethods(visitor);
         for (MutableClassDetails superType : superTypes) {
@@ -51,7 +57,8 @@ class MutableClassDetails implements ClassDetails {
         }
     }
 
-    private void visitDeclaredMethods(Action<? super Method> visitor) {
+    @Override
+    public void visitDeclaredMethods(Action<? super Method> visitor) {
         for (Method method : methods) {
             visitor.execute(method);
         }
@@ -68,6 +75,22 @@ class MutableClassDetails implements ClassDetails {
     private void visitDeclaredFields(Action<? super Field> visitor) {
         for (Field field : fields) {
             visitor.execute(field);
+        }
+    }
+
+    private void visitDeclaredInstanceFields(Action<? super Field> visitor) {
+        for (Field field : fields) {
+            if (!Modifier.isStatic(field.getModifiers())) {
+                visitor.execute(field);
+            }
+        }
+    }
+
+    @Override
+    public void visitInstanceFields(Action<? super Field> visitor) {
+        visitDeclaredInstanceFields(visitor);
+        for (MutableClassDetails superType : superTypes) {
+            superType.visitDeclaredInstanceFields(visitor);
         }
     }
 

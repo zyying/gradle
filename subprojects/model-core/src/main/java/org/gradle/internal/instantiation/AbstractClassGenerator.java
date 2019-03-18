@@ -24,6 +24,7 @@ import groovy.lang.Closure;
 import groovy.lang.GroovyObject;
 import org.gradle.api.Action;
 import org.gradle.api.NonExtensible;
+import org.gradle.api.Transformer;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
@@ -35,14 +36,18 @@ import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.SetProperty;
+import org.gradle.cache.internal.CrossBuildInMemoryCache;
+import org.gradle.cache.internal.CrossBuildInMemoryCacheFactory;
 import org.gradle.internal.Cast;
 import org.gradle.internal.extensibility.NoConventionMapping;
 import org.gradle.internal.logging.text.TreeFormatter;
 import org.gradle.internal.reflect.ClassDetails;
 import org.gradle.internal.reflect.ClassInspector;
+import org.gradle.internal.reflect.DefaultParameterValidationContext;
 import org.gradle.internal.reflect.Instantiator;
 import org.gradle.internal.reflect.JavaPropertyReflectionUtil;
 import org.gradle.internal.reflect.MethodSet;
+import org.gradle.internal.reflect.ParameterValidationContext;
 import org.gradle.internal.reflect.PropertyAccessorType;
 import org.gradle.internal.reflect.PropertyDetails;
 import org.gradle.internal.service.ServiceLookup;
@@ -89,8 +94,9 @@ abstract class AbstractClassGenerator implements ClassGenerator {
     private final ImmutableSet<Class<? extends Annotation>> disabledAnnotations;
     private final ImmutableSet<Class<? extends Annotation>> enabledAnnotations;
     private final ClassInspector classInspector;
+    private final CrossBuildInMemoryCache<Class<?>, ClassValidationDetails> validationCache;
 
-    public AbstractClassGenerator(Collection<? extends InjectAnnotationHandler> allKnownAnnotations, Collection<Class<? extends Annotation>> enabledAnnotations, ClassInspector classInspector) {
+    public AbstractClassGenerator(Collection<? extends InjectAnnotationHandler> allKnownAnnotations, Collection<Class<? extends Annotation>> enabledAnnotations, ClassInspector classInspector, CrossBuildInMemoryCacheFactory cacheFactory) {
         this.enabledAnnotations = ImmutableSet.copyOf(enabledAnnotations);
         this.classInspector = classInspector;
         ImmutableSet.Builder<Class<? extends Annotation>> builder = ImmutableSet.builder();
@@ -100,6 +106,7 @@ abstract class AbstractClassGenerator implements ClassGenerator {
             }
         }
         this.disabledAnnotations = builder.build();
+        this.validationCache = cacheFactory.newClassCache();
     }
 
     public <T> GeneratedClass<? extends T> generate(Class<T> type) {
@@ -220,14 +227,23 @@ abstract class AbstractClassGenerator implements ClassGenerator {
             handler.startType(type);
         }
 
-        classDetails.visitAllMethods(new Action<Method>() {
+        List<String> problems = new ArrayList<>();
+        classDetails.visitTypes(new Action<ClassDetails>() {
             @Override
-            public void execute(Method method) {
-                for (ClassValidator validator : validators) {
-                    validator.validateMethod(method, PropertyAccessorType.of(method));
-                }
+            public void execute(ClassDetails classDetails) {
+                validateType(classDetails, validators, problems);
             }
         });
+        if (!problems.isEmpty()) {
+            TreeFormatter formatter = new TreeFormatter();
+            formatter.node("Found some problems with ").appendType(type);
+            formatter.startChildren();
+            for (String problem : problems) {
+                formatter.node(problem);
+            }
+            formatter.endChildren();
+            throw new IllegalArgumentException(formatter.toString());
+        }
 
         for (PropertyDetails property : classDetails.getProperties()) {
             PropertyMetadata propertyMetaData = classMetaData.property(property.getName());
@@ -276,14 +292,32 @@ abstract class AbstractClassGenerator implements ClassGenerator {
         visitFields(classDetails, generationHandlers);
     }
 
+    private void validateType(ClassDetails classDetails, List<ClassValidator> validators, List<String> messages) {
+        ClassValidationDetails validationDetails = validationCache.get(classDetails.getType(), new Transformer<ClassValidationDetails, Class<?>>() {
+            @Override
+            public ClassValidationDetails transform(Class<?> aClass) {
+                List<String> messages = new ArrayList<>();
+                DefaultParameterValidationContext context = new DefaultParameterValidationContext(messages);
+                classDetails.visitDeclaredMethods(new Action<Method>() {
+                    @Override
+                    public void execute(Method method) {
+                        for (ClassValidator validator : validators) {
+                            validator.validateMethod(method, PropertyAccessorType.of(method), context);
+                        }
+                    }
+                });
+                return new ClassValidationDetails(ImmutableList.copyOf(messages));
+            }
+        });
+        messages.addAll(validationDetails.messages);
+    }
+
     private void visitFields(ClassDetails classDetails, List<ClassGenerationHandler> generationHandlers) {
-        classDetails.visitAllFields(new Action<Field>() {
+        classDetails.visitInstanceFields(new Action<Field>() {
             @Override
             public void execute(Field field) {
-                if (!Modifier.isStatic(field.getModifiers())) {
-                    for (ClassGenerationHandler handler : generationHandlers) {
-                        handler.hasFields();
-                    }
+                for (ClassGenerationHandler handler : generationHandlers) {
+                    handler.hasFields();
                 }
             }
         });
@@ -596,7 +630,7 @@ abstract class AbstractClassGenerator implements ClassGenerator {
     }
 
     private interface ClassValidator {
-        void validateMethod(Method method, PropertyAccessorType accessorType);
+        void validateMethod(Method method, PropertyAccessorType accessorType, ParameterValidationContext context);
     }
 
     private static class ClassGenerationHandler {
@@ -961,11 +995,11 @@ abstract class AbstractClassGenerator implements ClassGenerator {
         }
 
         @Override
-        public void validateMethod(Method method, PropertyAccessorType accessorType) {
+        public void validateMethod(Method method, PropertyAccessorType accessorType, ParameterValidationContext context) {
             List<Class<? extends Annotation>> matches = new ArrayList<Class<? extends Annotation>>();
-            validateMethod(method, accessorType, Inject.class, matches);
+            validateMethod(method, accessorType, Inject.class, matches, context);
             for (Class<? extends Annotation> annotationType : annotationTypes) {
-                validateMethod(method, accessorType, annotationType, matches);
+                validateMethod(method, accessorType, annotationType, matches, context);
             }
             if (matches.size() > 1) {
                 TreeFormatter formatter = new TreeFormatter();
@@ -976,11 +1010,11 @@ abstract class AbstractClassGenerator implements ClassGenerator {
                 formatter.append(" annotations together on method ");
                 formatter.appendMethod(method);
                 formatter.append(".");
-                throw new IllegalArgumentException(formatter.toString());
+                context.visitError(formatter.toString());
             }
         }
 
-        private void validateMethod(Method method, PropertyAccessorType accessorType, Class<? extends Annotation> annotationType, List<Class<? extends Annotation>> matches) {
+        private void validateMethod(Method method, PropertyAccessorType accessorType, Class<? extends Annotation> annotationType, List<Class<? extends Annotation>> matches, ParameterValidationContext context) {
             if (method.getAnnotation(annotationType) == null) {
                 return;
             }
@@ -992,7 +1026,8 @@ abstract class AbstractClassGenerator implements ClassGenerator {
                 formatter.append(" annotation on method ");
                 formatter.appendMethod(method);
                 formatter.append(" as it is static.");
-                throw new IllegalArgumentException(formatter.toString());
+                context.visitError(formatter.toString());
+                return;
             }
             if (accessorType != PropertyAccessorType.GET_GETTER) {
                 TreeFormatter formatter = new TreeFormatter();
@@ -1001,7 +1036,8 @@ abstract class AbstractClassGenerator implements ClassGenerator {
                 formatter.append(" annotation on method ");
                 formatter.appendMethod(method);
                 formatter.append(" as it is not a property getter.");
-                throw new IllegalArgumentException(formatter.toString());
+                context.visitError(formatter.toString());
+                return;
             }
             if (Modifier.isFinal(method.getModifiers())) {
                 TreeFormatter formatter = new TreeFormatter();
@@ -1010,7 +1046,7 @@ abstract class AbstractClassGenerator implements ClassGenerator {
                 formatter.append(" annotation on method ");
                 formatter.appendMethod(method);
                 formatter.append(" as it is final.");
-                throw new IllegalArgumentException(formatter.toString());
+                context.visitError(formatter.toString());
             }
             if (!Modifier.isPublic(method.getModifiers()) && !Modifier.isProtected(method.getModifiers())) {
                 TreeFormatter formatter = new TreeFormatter();
@@ -1019,7 +1055,7 @@ abstract class AbstractClassGenerator implements ClassGenerator {
                 formatter.append(" annotation on method ");
                 formatter.appendMethod(method);
                 formatter.append(" as it is not public or protected.");
-                throw new IllegalArgumentException(formatter.toString());
+                context.visitError(formatter.toString());
             }
         }
     }
@@ -1149,17 +1185,25 @@ abstract class AbstractClassGenerator implements ClassGenerator {
         }
 
         @Override
-        public void validateMethod(Method method, PropertyAccessorType accessorType) {
+        public void validateMethod(Method method, PropertyAccessorType accessorType, ParameterValidationContext context) {
             if (method.getAnnotation(annotation) != null) {
                 TreeFormatter formatter = new TreeFormatter();
-                formatter.node("Cannot use ");
+                formatter.node("Cannot use unsupported ");
                 formatter.appendAnnotation(annotation);
                 formatter.append(" annotation on method ");
                 formatter.appendMethod(method);
                 formatter.append(".");
 
-                throw new IllegalArgumentException(formatter.toString());
+                context.visitError(formatter.toString());
             }
+        }
+    }
+
+    private static final class ClassValidationDetails {
+        private final List<String> messages;
+
+        public ClassValidationDetails(List<String> messages) {
+            this.messages = messages;
         }
     }
 

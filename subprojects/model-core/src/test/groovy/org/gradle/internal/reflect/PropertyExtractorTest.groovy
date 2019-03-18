@@ -19,7 +19,6 @@ package org.gradle.internal.reflect
 import com.google.common.collect.ImmutableMultimap
 import com.google.common.collect.ImmutableSet
 import org.gradle.api.file.FileCollection
-import org.gradle.api.internal.tasks.properties.DefaultParameterValidationContext
 import org.gradle.internal.Pair
 import spock.lang.Issue
 import spock.lang.Specification

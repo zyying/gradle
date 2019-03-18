@@ -17,7 +17,7 @@
 package org.gradle.api.internal.tasks;
 
 import org.gradle.api.internal.file.FileResolver;
-import org.gradle.api.internal.tasks.properties.DefaultParameterValidationContext;
+import org.gradle.internal.reflect.DefaultParameterValidationContext;
 
 import java.util.Collection;
 
