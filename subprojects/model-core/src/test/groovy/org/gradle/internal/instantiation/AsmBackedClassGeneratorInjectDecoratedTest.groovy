@@ -22,6 +22,7 @@ import org.gradle.cache.internal.TestCrossBuildInMemoryCacheFactory
 import org.gradle.internal.service.DefaultServiceRegistry
 import org.gradle.internal.service.ServiceRegistry
 import org.gradle.util.TestUtil
+import org.gradle.util.TextUtil
 
 import javax.inject.Inject
 import java.lang.annotation.Annotation
@@ -264,8 +265,8 @@ class AsmBackedClassGeneratorInjectDecoratedTest extends AbstractClassGeneratorS
 
         then:
         def e = thrown(ClassGenerationException)
-        e.message == """Found some problems with class ${MultipleInjectAnnotations.name}:
-  - Cannot use @Inject and @CustomInject annotations together on method MultipleInjectAnnotations.getBoth()."""
+        e.message == TextUtil.toPlatformLineSeparators("""Found some problems with class ${MultipleInjectAnnotations.name}:
+  - Cannot use @Inject and @CustomInject annotations together on method MultipleInjectAnnotations.getBoth().""")
     }
 
     def "object can provide its own service registry to provide services for injection"() {
@@ -296,8 +297,8 @@ class AsmBackedClassGeneratorInjectDecoratedTest extends AbstractClassGeneratorS
 
         then:
         def e = thrown(ClassGenerationException)
-        e.message == """Found some problems with class ${FinalInjectBean.name}:
-  - Cannot use @Inject annotation on method FinalInjectBean.getThing() as it is final."""
+        e.message == TextUtil.toPlatformLineSeparators("""Found some problems with class ${FinalInjectBean.name}:
+  - Cannot use @Inject annotation on method FinalInjectBean.getThing() as it is final.""")
     }
 
     def "cannot attach @Inject annotation to static method"() {
@@ -306,8 +307,8 @@ class AsmBackedClassGeneratorInjectDecoratedTest extends AbstractClassGeneratorS
 
         then:
         def e = thrown(ClassGenerationException)
-        e.message == """Found some problems with class ${StaticInjectBean.name}:
-  - Cannot use @Inject annotation on method StaticInjectBean.getThing() as it is static."""
+        e.message == TextUtil.toPlatformLineSeparators("""Found some problems with class ${StaticInjectBean.name}:
+  - Cannot use @Inject annotation on method StaticInjectBean.getThing() as it is static.""")
     }
 
     def "cannot attach @Inject annotation to private method"() {
@@ -316,8 +317,8 @@ class AsmBackedClassGeneratorInjectDecoratedTest extends AbstractClassGeneratorS
 
         then:
         def e = thrown(ClassGenerationException)
-        e.message == """Found some problems with class ${PrivateInjectBean.name}:
-  - Cannot use @Inject annotation on method PrivateInjectBean.getThing() as it is not public or protected."""
+        e.message == TextUtil.toPlatformLineSeparators("""Found some problems with class ${PrivateInjectBean.name}:
+  - Cannot use @Inject annotation on method PrivateInjectBean.getThing() as it is not public or protected.""")
     }
 
     def "cannot attach @Inject annotation to non getter method"() {
@@ -326,8 +327,8 @@ class AsmBackedClassGeneratorInjectDecoratedTest extends AbstractClassGeneratorS
 
         then:
         def e = thrown(ClassGenerationException)
-        e.message == """Found some problems with class ${NonGetterInjectBean.name}:
-  - Cannot use @Inject annotation on method NonGetterInjectBean.thing() as it is not a property getter."""
+        e.message == TextUtil.toPlatformLineSeparators("""Found some problems with class ${NonGetterInjectBean.name}:
+  - Cannot use @Inject annotation on method NonGetterInjectBean.thing() as it is not a property getter.""")
     }
 
     def "cannot attach custom annotation that is known but not enabled to getter method"() {
@@ -338,8 +339,8 @@ class AsmBackedClassGeneratorInjectDecoratedTest extends AbstractClassGeneratorS
 
         then:
         def e = thrown(ClassGenerationException)
-        e.message == """Found some problems with class ${BeanWithCustomServices.name}:
-  - Cannot use unsupported @CustomInject annotation on method BeanWithCustomServices.getThing()."""
+        e.message == TextUtil.toPlatformLineSeparators("""Found some problems with class ${BeanWithCustomServices.name}:
+  - Cannot use unsupported @CustomInject annotation on method BeanWithCustomServices.getThing().""")
     }
 
     def "cannot attach custom annotation that is known but not enabled to static method"() {
@@ -350,8 +351,8 @@ class AsmBackedClassGeneratorInjectDecoratedTest extends AbstractClassGeneratorS
 
         then:
         def e = thrown(ClassGenerationException)
-        e.message == """Found some problems with class ${StaticCustomInjectBean.name}:
-  - Cannot use unsupported @CustomInject annotation on method StaticCustomInjectBean.getThing()."""
+        e.message == TextUtil.toPlatformLineSeparators("""Found some problems with class ${StaticCustomInjectBean.name}:
+  - Cannot use unsupported @CustomInject annotation on method StaticCustomInjectBean.getThing().""")
     }
 
     def "cannot attach custom inject annotation to methods of ExtensionAware"() {
@@ -373,8 +374,8 @@ class AsmBackedClassGeneratorInjectDecoratedTest extends AbstractClassGeneratorS
 
         then:
         def e = thrown(ClassGenerationException)
-        e.message == """Found some problems with class ${StaticCustomInjectBean.name}:
-  - Cannot use @CustomInject annotation on method StaticCustomInjectBean.getThing() as it is static."""
+        e.message == TextUtil.toPlatformLineSeparators("""Found some problems with class ${StaticCustomInjectBean.name}:
+  - Cannot use @CustomInject annotation on method StaticCustomInjectBean.getThing() as it is static.""")
     }
 
     def "collects problems from super types"() {
@@ -385,19 +386,19 @@ class AsmBackedClassGeneratorInjectDecoratedTest extends AbstractClassGeneratorS
 
         then:
         def e1 = thrown(ClassGenerationException)
-        e1.message == """Found some problems with class ${BeanWithInheritedProblems.name}:
+        e1.message == TextUtil.toPlatformLineSeparators("""Found some problems with class ${BeanWithInheritedProblems.name}:
   - Cannot use @Inject annotation on method BeanWithInheritedProblems.getBroken() as it is final.
   - Cannot use @CustomInject annotation on method BeanWithInheritedProblems.getBroken() as it is final.
   - Cannot use @Inject and @CustomInject annotations together on method BeanWithInheritedProblems.getBroken().
   - Cannot use @Inject annotation on method BeanWithInheritedProblems.getPrivateThing() as it is not public or protected.
-  - Cannot use @CustomInject annotation on method StaticCustomInjectBean.getThing() as it is static."""
+  - Cannot use @CustomInject annotation on method StaticCustomInjectBean.getThing() as it is static.""")
 
         when:
         generator.generate(BeanWithMoreInheritedProblems)
 
         then:
         def e2 = thrown(ClassGenerationException)
-        e2.message == """Found some problems with class ${BeanWithMoreInheritedProblems.name}:
+        e2.message == TextUtil.toPlatformLineSeparators("""Found some problems with class ${BeanWithMoreInheritedProblems.name}:
   - Cannot use @CustomInject annotation on method BeanWithMoreInheritedProblems.thing() as it is not a property getter.
   - Cannot use @Inject annotation on method BeanWithInheritedProblems.getBroken() as it is final.
   - Cannot use @CustomInject annotation on method BeanWithInheritedProblems.getBroken() as it is final.
@@ -405,7 +406,7 @@ class AsmBackedClassGeneratorInjectDecoratedTest extends AbstractClassGeneratorS
   - Cannot use @Inject annotation on method BeanWithInheritedProblems.getPrivateThing() as it is not public or protected.
   - Cannot use @CustomInject annotation on method StaticCustomInjectBean.getThing() as it is static.
   - Cannot use @CustomInject annotation on method BrokenInterface.thing() as it is not a property getter.
-  - Cannot use @Inject annotation on method BrokenInterface.otherThing() as it is not a property getter."""
+  - Cannot use @Inject annotation on method BrokenInterface.otherThing() as it is not a property getter.""")
     }
 
     ClassGenerator generatorWithCustomAnnotation() {
