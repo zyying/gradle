@@ -24,7 +24,7 @@ pluginManagement {
     }
 }
 
-apply(from = "../gradle/shared-with-buildSrc/build-cache-configuration.settings.gradle.kts")
+apply(from = "../gradle/shared-with-buildSrc/buildCache.gradle")
 apply(from = "../gradle/shared-with-buildSrc/mirrors.settings.gradle.kts")
 
 val upperCaseLetters = "\\p{Upper}".toRegex()

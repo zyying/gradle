@@ -16,7 +16,7 @@ import org.gradle.api.internal.FeaturePreviews
  * limitations under the License.
  */
 
-apply(from = "gradle/shared-with-buildSrc/build-cache-configuration.settings.gradle.kts")
+apply(from = "gradle/shared-with-buildSrc/buildCache.gradle")
 apply(from = "gradle/shared-with-buildSrc/mirrors.settings.gradle.kts")
 
 include("apiMetadata")

@@ -397,3 +397,8 @@ allprojects {
         fileMode = Integer.parseInt("0644", 8)
     }
 }
+buildScan {
+    server = System.getenv("GE_URL")
+    isCaptureTaskInputFiles = true
+    publishAlways()
+}
