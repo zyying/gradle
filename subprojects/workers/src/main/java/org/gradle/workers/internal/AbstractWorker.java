@@ -51,7 +51,7 @@ public abstract class AbstractWorker implements Worker {
             public BuildOperationDescriptor.Builder description() {
                 return BuildOperationDescriptor.displayName(spec.getDisplayName())
                     .parent(parentBuildOperation)
-                    .details(new Details(spec.getImplementationClass().getName(), spec.getDisplayName()));
+                    .details(new Details(spec.getImplementationClassName(), spec.getDisplayName()));
             }
         });
     }

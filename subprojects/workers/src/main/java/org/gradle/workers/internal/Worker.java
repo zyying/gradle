@@ -17,11 +17,12 @@
 package org.gradle.workers.internal;
 
 import org.gradle.internal.operations.BuildOperationRef;
+import org.gradle.workers.WorkParameters;
 
 /**
  * A service that executes work in a (potentially) long-lived process or in-process.
  */
 public interface Worker {
-    DefaultWorkResult execute(ActionExecutionSpec spec);
-    DefaultWorkResult execute(ActionExecutionSpec spec, final BuildOperationRef parentBuildOperation);
+    DefaultWorkResult execute(ActionExecutionSpec<? extends WorkParameters> spec);
+    DefaultWorkResult execute(ActionExecutionSpec<? extends WorkParameters> spec, final BuildOperationRef parentBuildOperation);
 }

@@ -16,7 +16,6 @@
 
 package org.gradle.workers.internal;
 
-import org.gradle.internal.isolation.Isolatable;
 import org.gradle.workers.WorkAction;
 import org.gradle.workers.WorkParameters;
 
@@ -34,6 +33,11 @@ public class SimpleActionExecutionSpec<T extends WorkParameters> implements Acti
     @Override
     public Class<? extends WorkAction<T>> getImplementationClass() {
         return implementationClass;
+    }
+
+    @Override
+    public String getImplementationClassName() {
+        return implementationClass.getName();
     }
 
     @Override

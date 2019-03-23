@@ -27,6 +27,11 @@ public class WrappedActionExecutionSpec<T extends WorkParameters> extends Simple
         this.wrappedImplementationClass = wrappedImplementationClass;
     }
 
+    @Override
+    public String getImplementationClassName() {
+        return wrappedImplementationClass.getName();
+    }
+
     public Class<?> getWrappedImplementationClass() {
         return wrappedImplementationClass;
     }

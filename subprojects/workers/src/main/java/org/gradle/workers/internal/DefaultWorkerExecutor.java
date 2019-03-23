@@ -98,7 +98,7 @@ public class DefaultWorkerExecutor implements WorkerExecutor {
         // TODO: this goes away when we change the public api
         configuration.getParameters().setParams(configuration.getParams());
 
-        String description = configuration.getDisplayName() != null ? configuration.getDisplayName() : actionClass.getName();
+        String description = configuration.getDisplayName() != null ? configuration.getDisplayName() : wrappedImplementationClass.getName();
 
         if (!workingDirectory.equals(configuration.getForkOptions().getWorkingDir())) {
             throw new WorkExecutionException(description + ": setting the working directory of a worker is not supported.");

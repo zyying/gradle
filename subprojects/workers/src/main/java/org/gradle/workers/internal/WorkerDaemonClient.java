@@ -21,6 +21,7 @@ import org.gradle.internal.concurrent.Stoppable;
 import org.gradle.internal.operations.BuildOperationRef;
 import org.gradle.process.internal.health.memory.JvmMemoryStatus;
 import org.gradle.process.internal.worker.WorkerProcess;
+import org.gradle.workers.WorkParameters;
 
 class WorkerDaemonClient implements Worker, Stoppable {
     public static final String DISABLE_EXPIRATION_PROPERTY_KEY = "org.gradle.workers.internal.disable-daemons-expiration";
@@ -40,12 +41,12 @@ class WorkerDaemonClient implements Worker, Stoppable {
     }
 
     @Override
-    public DefaultWorkResult execute(final ActionExecutionSpec spec, final BuildOperationRef parentBuildOperation) {
+    public DefaultWorkResult execute(final ActionExecutionSpec<? extends WorkParameters> spec, final BuildOperationRef parentBuildOperation) {
         return execute(spec);
     }
 
     @Override
-    public DefaultWorkResult execute(ActionExecutionSpec spec) {
+    public DefaultWorkResult execute(ActionExecutionSpec<? extends WorkParameters> spec) {
         uses++;
         return workerDaemonProcess.execute(spec);
     }

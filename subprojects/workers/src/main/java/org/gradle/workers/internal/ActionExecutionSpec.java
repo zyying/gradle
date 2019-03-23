@@ -25,6 +25,8 @@ import java.io.Serializable;
 public interface ActionExecutionSpec<T extends WorkParameters> extends Serializable, Describable {
     Class<? extends WorkAction<T>> getImplementationClass();
 
+    String getImplementationClassName();
+
     @Override
     String getDisplayName();
 

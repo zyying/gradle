@@ -17,9 +17,13 @@
 package org.gradle.workers.internal;
 
 import net.jcip.annotations.ThreadSafe;
+import org.gradle.internal.Cast;
 import org.gradle.internal.operations.BuildOperationExecutor;
 import org.gradle.internal.operations.BuildOperationRef;
 import org.gradle.workers.IsolationMode;
+import org.gradle.workers.WorkParameters;
+
+import static org.gradle.workers.internal.TransportableActionExecutableSpec.withoutManagedObject;
 
 /**
  * Controls the lifecycle of the worker daemon and provides access to it.
@@ -38,13 +42,13 @@ public class WorkerDaemonFactory implements WorkerFactory {
     public Worker getWorker(final DaemonForkOptions forkOptions) {
         return new AbstractWorker(buildOperationExecutor) {
             @Override
-            public DefaultWorkResult execute(ActionExecutionSpec spec, BuildOperationRef parentBuildOperation) {
+            public DefaultWorkResult execute(ActionExecutionSpec<? extends WorkParameters> spec, BuildOperationRef parentBuildOperation) {
                 final WorkerDaemonClient client = reserveClient();
                 try {
                     return executeWrappedInBuildOperation(spec, parentBuildOperation, new Work() {
                         @Override
                         public DefaultWorkResult execute(ActionExecutionSpec spec) {
-                            return client.execute(spec);
+                            return client.execute(withoutManagedObject(Cast.<WrappedActionExecutionSpec<? extends WorkParameters>>uncheckedCast(spec)));
                         }
                     });
                 } finally {

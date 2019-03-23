@@ -17,11 +17,13 @@
 package org.gradle.workers.internal;
 
 import org.gradle.cache.internal.DefaultCrossBuildInMemoryCacheFactory;
+import org.gradle.internal.Cast;
 import org.gradle.internal.event.DefaultListenerManager;
 import org.gradle.internal.instantiation.DefaultInstantiatorFactory;
 import org.gradle.internal.instantiation.InjectAnnotationHandler;
 import org.gradle.internal.instantiation.InstantiatorFactory;
 import org.gradle.internal.isolation.IsolatableFactory;
+import org.gradle.workers.WorkParameters;
 
 import java.util.Collections;
 
@@ -34,9 +36,10 @@ public class WorkerDaemonServer extends DefaultWorkerServer {
     }
 
     @Override
-    public DefaultWorkResult execute(ActionExecutionSpec spec) {
+    public DefaultWorkResult execute(ActionExecutionSpec<? extends WorkParameters> spec) {
         try {
-            return super.execute(spec);
+            TransportableActionExecutableSpec<? extends WorkParameters> transportableSpec = Cast.uncheckedCast(spec);
+            return super.execute(transportableSpec.withManagedObject(INSTANTIATOR_FACTORY));
         } catch (Throwable t) {
             return new DefaultWorkResult(true, t);
         }
