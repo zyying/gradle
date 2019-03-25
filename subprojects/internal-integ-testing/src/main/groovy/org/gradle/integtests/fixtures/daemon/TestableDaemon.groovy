@@ -19,6 +19,9 @@ package org.gradle.integtests.fixtures.daemon
 import org.gradle.internal.time.Time
 import org.gradle.launcher.daemon.registry.DaemonRegistry
 
+import java.nio.file.Files
+import java.nio.file.attribute.PosixFilePermission
+
 import static org.gradle.launcher.daemon.server.api.DaemonStateControl.*
 
 class TestableDaemon extends AbstractDaemonFixture {
@@ -27,6 +30,8 @@ class TestableDaemon extends AbstractDaemonFixture {
 
     TestableDaemon(File daemonLog, DaemonRegistry registry) {
         super(daemonLog)
+        def perms = Files.getPosixFilePermissions(daemonLog.toPath())
+        assert [ PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE ].containsAll(perms)
         this.logFileProbe = new DaemonLogFileStateProbe(daemonLog, context)
         this.registryProbe = new DaemonRegistryStateProbe(registry, context)
     }

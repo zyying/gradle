@@ -26,6 +26,7 @@ import org.gradle.internal.logging.LoggingManagerInternal;
 import org.gradle.internal.logging.services.LoggingServiceRegistry;
 import org.gradle.internal.nativeintegration.ProcessEnvironment;
 import org.gradle.internal.nativeintegration.services.NativeServices;
+import org.gradle.internal.nativeplatform.filesystem.FileSystem;
 import org.gradle.internal.remote.Address;
 import org.gradle.internal.serialize.kryo.KryoBackedDecoder;
 import org.gradle.internal.service.scopes.GradleUserHomeScopeServiceRegistry;
@@ -116,6 +117,9 @@ public class DaemonMain extends EntryPoint {
 
         // Any logging prior to this point will not end up in the daemon log file.
         initialiseLogging(loggingManager, daemonLog);
+
+        FileSystem fileSystem = daemonServices.get(FileSystem.class);
+        fileSystem.chmod(daemonLog, 0600);
 
         // Detach the process from the parent terminal/console
         ProcessEnvironment processEnvironment = daemonServices.get(ProcessEnvironment.class);
