@@ -187,7 +187,7 @@ open class BuildScanPlugin : Plugin<Project> {
                     isJenkins -> {
                         link("Jenkins Build", System.getenv("BUILD_URL"))
                         value("Build ID", System.getenv("BUILD_ID"))
-                        setCommitId(System.getenv("GIT_COMMIT"))
+                        setCommitId(execAndGetStdout("git", "rev-parse", "HEAD"))
                     }
                     else -> {
                         link("TeamCity Build", System.getenv("BUILD_URL"))
