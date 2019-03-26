@@ -17,7 +17,13 @@
 package org.gradle.workers.internal
 
 import org.gradle.api.internal.file.TestFiles
+import org.gradle.internal.instantiation.InstantiationScheme
+import org.gradle.internal.instantiation.InstantiatorFactory
+import org.gradle.internal.isolation.Isolatable
+import org.gradle.internal.isolation.IsolatableFactory
 import org.gradle.internal.operations.BuildOperationExecutor
+import org.gradle.internal.reflect.Instantiator
+import org.gradle.internal.state.Managed
 import org.gradle.internal.work.AsyncWorkTracker
 import org.gradle.internal.work.ConditionalExecution
 import org.gradle.internal.work.ConditionalExecutionQueue
@@ -56,12 +62,12 @@ class DefaultWorkerExecutorTest extends Specification {
 
     def setup() {
         _ * executionQueueFactory.create() >> executionQueue
-        workerExecutor = new DefaultWorkerExecutor(workerDaemonFactory, inProcessWorkerFactory, noIsolationWorkerFactory, forkOptionsFactory, buildOperationWorkerRegistry, buildOperationExecutor, asyncWorkTracker, workerDirectoryProvider, executionQueueFactory, parametersInstantiationScheme, instantiatorFactory)
+        workerExecutor = new DefaultWorkerExecutor(workerDaemonFactory, inProcessWorkerFactory, noIsolationWorkerFactory, forkOptionsFactory, buildOperationWorkerRegistry, buildOperationExecutor, asyncWorkTracker, workerDirectoryProvider, executionQueueFactory, instantiatorFactory(), isolatableFactory())
     }
 
     def "worker configuration fork property defaults to AUTO"() {
         given:
-        WorkerConfiguration configuration = new DefaultWorkerConfiguration(forkOptionsFactory)
+        WorkerConfiguration configuration = new DefaultWorkerConfiguration(forkOptionsFactory, parameters())
 
         expect:
         configuration.isolationMode == IsolationMode.AUTO
@@ -92,7 +98,7 @@ class DefaultWorkerExecutorTest extends Specification {
     }
 
     def "can convert javaForkOptions to daemonForkOptions"() {
-        WorkerConfiguration configuration = new DefaultWorkerConfiguration(forkOptionsFactory)
+        WorkerConfiguration configuration = new DefaultWorkerConfiguration(forkOptionsFactory, parameters())
 
         given:
         configuration.forkOptions { options ->
@@ -118,7 +124,7 @@ class DefaultWorkerExecutorTest extends Specification {
 
     def "can add to classpath on executor"() {
         given:
-        WorkerConfiguration configuration = new DefaultWorkerConfiguration(forkOptionsFactory)
+        WorkerConfiguration configuration = new DefaultWorkerConfiguration(forkOptionsFactory, parameters())
         def foo = new File("/foo")
         configuration.classpath([foo])
 
@@ -299,4 +305,28 @@ class DefaultWorkerExecutorTest extends Specification {
             println "executing"
         }
     }
+
+    InstantiatorFactory instantiatorFactory() {
+        def instantiatorFactory = Stub(InstantiatorFactory)
+        InstantiationScheme scheme = Mock(InstantiationScheme)
+        _ * instantiatorFactory.injectScheme() >> scheme
+        Instantiator instantiator = Mock(Instantiator)
+        _ * scheme.instantiator() >> instantiator
+        _ * instantiator.newInstance(WrappedParameters.class, _) >> parameters()
+        return instantiatorFactory
+    }
+
+    IsolatableFactory isolatableFactory() {
+        def isolatableFactory = Stub(IsolatableFactory)
+        _ * isolatableFactory.isolate(_) >> Mock(Isolatable) {
+            _ * isolate() >> parameters()
+        }
+        return isolatableFactory
+    }
+
+    WrappedParameters parameters() {
+        return Mock(TestParameters)
+    }
+
+    interface TestParameters extends WrappedParameters, Managed { }
 }

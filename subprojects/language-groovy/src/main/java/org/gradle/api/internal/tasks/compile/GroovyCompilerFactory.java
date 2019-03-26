@@ -22,6 +22,7 @@ import org.gradle.api.internal.tasks.compile.processing.AnnotationProcessorDetec
 import org.gradle.api.tasks.WorkResult;
 import org.gradle.api.tasks.compile.GroovyCompileOptions;
 import org.gradle.internal.concurrent.CompositeStoppable;
+import org.gradle.internal.instantiation.InstantiatorFactory;
 import org.gradle.internal.jvm.inspection.JvmVersionDetector;
 import org.gradle.language.base.internal.compile.Compiler;
 import org.gradle.language.base.internal.compile.CompilerFactory;
@@ -42,8 +43,9 @@ public class GroovyCompilerFactory implements CompilerFactory<GroovyJavaJointCom
     private final JvmVersionDetector jvmVersionDetector;
     private final WorkerDirectoryProvider workerDirectoryProvider;
     private final ClassPathRegistry classPathRegistry;
+    private final InstantiatorFactory instantiatorFactory;
 
-    public GroovyCompilerFactory(WorkerDaemonFactory workerDaemonFactory, IsolatedClassloaderWorkerFactory inProcessWorkerFactory, JavaForkOptionsFactory forkOptionsFactory, AnnotationProcessorDetector processorDetector, JvmVersionDetector jvmVersionDetector, WorkerDirectoryProvider workerDirectoryProvider, ClassPathRegistry classPathRegistry) {
+    public GroovyCompilerFactory(WorkerDaemonFactory workerDaemonFactory, IsolatedClassloaderWorkerFactory inProcessWorkerFactory, JavaForkOptionsFactory forkOptionsFactory, AnnotationProcessorDetector processorDetector, JvmVersionDetector jvmVersionDetector, WorkerDirectoryProvider workerDirectoryProvider, ClassPathRegistry classPathRegistry, InstantiatorFactory instantiatorFactory) {
         this.workerDaemonFactory = workerDaemonFactory;
         this.inProcessWorkerFactory = inProcessWorkerFactory;
         this.forkOptionsFactory = forkOptionsFactory;
@@ -51,6 +53,7 @@ public class GroovyCompilerFactory implements CompilerFactory<GroovyJavaJointCom
         this.jvmVersionDetector = jvmVersionDetector;
         this.workerDirectoryProvider = workerDirectoryProvider;
         this.classPathRegistry = classPathRegistry;
+        this.instantiatorFactory = instantiatorFactory;
     }
 
     @Override
@@ -62,7 +65,7 @@ public class GroovyCompilerFactory implements CompilerFactory<GroovyJavaJointCom
         } else {
             workerFactory = inProcessWorkerFactory;
         }
-        Compiler<GroovyJavaJointCompileSpec> groovyCompiler = new DaemonGroovyCompiler(workerDirectoryProvider.getWorkingDirectory(), new DaemonSideCompiler(), classPathRegistry, workerFactory, forkOptionsFactory, jvmVersionDetector);
+        Compiler<GroovyJavaJointCompileSpec> groovyCompiler = new DaemonGroovyCompiler(workerDirectoryProvider.getWorkingDirectory(), new DaemonSideCompiler(), classPathRegistry, workerFactory, forkOptionsFactory, jvmVersionDetector, instantiatorFactory);
         return new AnnotationProcessorDiscoveringCompiler<GroovyJavaJointCompileSpec>(new NormalizingGroovyCompiler(groovyCompiler), processorDetector);
     }
 

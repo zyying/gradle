@@ -19,6 +19,7 @@ package org.gradle.play.internal.toolchain;
 import org.gradle.api.internal.tasks.compile.BaseForkOptionsConverter;
 import org.gradle.api.internal.tasks.compile.daemon.AbstractDaemonCompiler;
 import org.gradle.api.tasks.compile.BaseForkOptions;
+import org.gradle.internal.instantiation.InstantiatorFactory;
 import org.gradle.language.base.internal.compile.Compiler;
 import org.gradle.play.internal.spec.PlayCompileSpec;
 import org.gradle.process.JavaForkOptions;
@@ -36,8 +37,8 @@ public class DaemonPlayCompiler<T extends PlayCompileSpec> extends AbstractDaemo
     private final JavaForkOptionsFactory forkOptionsFactory;
     private final File daemonWorkingDir;
 
-    public DaemonPlayCompiler(File daemonWorkingDir, Compiler<T> compiler, WorkerDaemonFactory workerDaemonFactory, Iterable<File> compilerClasspath, Iterable<String> classLoaderPackages, JavaForkOptionsFactory forkOptionsFactory) {
-        super(compiler, workerDaemonFactory);
+    public DaemonPlayCompiler(File daemonWorkingDir, Compiler<T> compiler, WorkerDaemonFactory workerDaemonFactory, Iterable<File> compilerClasspath, Iterable<String> classLoaderPackages, JavaForkOptionsFactory forkOptionsFactory, InstantiatorFactory instantiatorFactory) {
+        super(compiler, workerDaemonFactory, instantiatorFactory);
         this.compilerClasspath = compilerClasspath;
         this.classLoaderPackages = classLoaderPackages;
         this.forkOptionsFactory = forkOptionsFactory;

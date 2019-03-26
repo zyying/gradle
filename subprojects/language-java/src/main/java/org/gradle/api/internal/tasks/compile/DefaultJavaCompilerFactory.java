@@ -17,6 +17,7 @@ package org.gradle.api.internal.tasks.compile;
 
 import org.gradle.api.internal.tasks.compile.processing.AnnotationProcessorDetector;
 import org.gradle.internal.Factory;
+import org.gradle.internal.instantiation.InstantiatorFactory;
 import org.gradle.language.base.internal.compile.CompileSpec;
 import org.gradle.language.base.internal.compile.Compiler;
 import org.gradle.process.internal.ExecHandleFactory;
@@ -33,14 +34,16 @@ public class DefaultJavaCompilerFactory implements JavaCompilerFactory {
     private final JavaForkOptionsFactory forkOptionsFactory;
     private final ExecHandleFactory execHandleFactory;
     private final AnnotationProcessorDetector processorDetector;
+    private final InstantiatorFactory instantiatorFactory;
 
-    public DefaultJavaCompilerFactory(WorkerDirectoryProvider workingDirProvider, WorkerDaemonFactory workerDaemonFactory, Factory<JavaCompiler> javaHomeBasedJavaCompilerFactory, JavaForkOptionsFactory forkOptionsFactory, ExecHandleFactory execHandleFactory, AnnotationProcessorDetector processorDetector) {
+    public DefaultJavaCompilerFactory(WorkerDirectoryProvider workingDirProvider, WorkerDaemonFactory workerDaemonFactory, Factory<JavaCompiler> javaHomeBasedJavaCompilerFactory, JavaForkOptionsFactory forkOptionsFactory, ExecHandleFactory execHandleFactory, AnnotationProcessorDetector processorDetector, InstantiatorFactory instantiatorFactory) {
         this.workingDirProvider = workingDirProvider;
         this.workerDaemonFactory = workerDaemonFactory;
         this.javaHomeBasedJavaCompilerFactory = javaHomeBasedJavaCompilerFactory;
         this.forkOptionsFactory = forkOptionsFactory;
         this.execHandleFactory = execHandleFactory;
         this.processorDetector = processorDetector;
+        this.instantiatorFactory = instantiatorFactory;
     }
 
     @Override
@@ -65,7 +68,7 @@ public class DefaultJavaCompilerFactory implements JavaCompilerFactory {
 
         Compiler<JavaCompileSpec> compiler = new JdkJavaCompiler(javaHomeBasedJavaCompilerFactory);
         if (ForkingJavaCompileSpec.class.isAssignableFrom(type) && !jointCompilation) {
-            return new DaemonJavaCompiler(workingDirProvider.getWorkingDirectory(), compiler, workerDaemonFactory, forkOptionsFactory);
+            return new DaemonJavaCompiler(workingDirProvider.getWorkingDirectory(), compiler, workerDaemonFactory, forkOptionsFactory, instantiatorFactory);
         }
 
         return compiler;

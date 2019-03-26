@@ -17,6 +17,7 @@ package org.gradle.api.internal.tasks.compile;
 
 import org.gradle.api.internal.tasks.compile.daemon.AbstractDaemonCompiler;
 import org.gradle.api.tasks.compile.ForkOptions;
+import org.gradle.internal.instantiation.InstantiatorFactory;
 import org.gradle.language.base.internal.compile.Compiler;
 import org.gradle.process.JavaForkOptions;
 import org.gradle.process.internal.JavaForkOptionsFactory;
@@ -33,8 +34,8 @@ public class DaemonJavaCompiler extends AbstractDaemonCompiler<JavaCompileSpec> 
     private final JavaForkOptionsFactory forkOptionsFactory;
     private final File daemonWorkingDir;
 
-    public DaemonJavaCompiler(File daemonWorkingDir, Compiler<JavaCompileSpec> delegate, WorkerDaemonFactory workerDaemonFactory, JavaForkOptionsFactory forkOptionsFactory) {
-        super(delegate, workerDaemonFactory);
+    public DaemonJavaCompiler(File daemonWorkingDir, Compiler<JavaCompileSpec> delegate, WorkerDaemonFactory workerDaemonFactory, JavaForkOptionsFactory forkOptionsFactory, InstantiatorFactory instantiatorFactory) {
+        super(delegate, workerDaemonFactory, instantiatorFactory);
         this.forkOptionsFactory = forkOptionsFactory;
         this.daemonWorkingDir = daemonWorkingDir;
     }

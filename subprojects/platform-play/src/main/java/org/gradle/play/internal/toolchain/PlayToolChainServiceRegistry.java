@@ -19,6 +19,7 @@ package org.gradle.play.internal.toolchain;
 import org.gradle.api.artifacts.ConfigurationContainer;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.internal.fingerprint.classpath.ClasspathFingerprinter;
+import org.gradle.internal.instantiation.InstantiatorFactory;
 import org.gradle.internal.service.ServiceRegistration;
 import org.gradle.internal.service.scopes.AbstractPluginServiceRegistry;
 import org.gradle.play.internal.spec.PlayApplicationBinaryRenderer;
@@ -40,8 +41,8 @@ public class PlayToolChainServiceRegistry extends AbstractPluginServiceRegistry 
     }
 
     private static class ProjectScopeCompileServices {
-        PlayToolChainInternal createPlayToolChain(JavaForkOptionsFactory forkOptionsFactory, WorkerDaemonFactory workerDaemonFactory, ConfigurationContainer configurationContainer, DependencyHandler dependencyHandler, WorkerProcessFactory workerProcessBuilderFactory, WorkerDirectoryProvider workerDirectoryProvider, ClasspathFingerprinter fingerprinter) {
-            return new DefaultPlayToolChain(forkOptionsFactory, workerDaemonFactory, configurationContainer, dependencyHandler, workerProcessBuilderFactory, workerDirectoryProvider, fingerprinter);
+        PlayToolChainInternal createPlayToolChain(JavaForkOptionsFactory forkOptionsFactory, WorkerDaemonFactory workerDaemonFactory, ConfigurationContainer configurationContainer, DependencyHandler dependencyHandler, WorkerProcessFactory workerProcessBuilderFactory, WorkerDirectoryProvider workerDirectoryProvider, ClasspathFingerprinter fingerprinter, InstantiatorFactory instantiatorFactory) {
+            return new DefaultPlayToolChain(forkOptionsFactory, workerDaemonFactory, configurationContainer, dependencyHandler, workerProcessBuilderFactory, workerDirectoryProvider, fingerprinter, instantiatorFactory);
         }
     }
 }

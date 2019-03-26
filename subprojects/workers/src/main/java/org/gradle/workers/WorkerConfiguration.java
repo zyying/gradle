@@ -44,6 +44,8 @@ import java.io.File;
  *      }
  * </pre>
  *
+ * @param <T> - the {@link WorkParameters} type associated with this request.
+ *
  * @since 3.5
  */
 public interface WorkerConfiguration<T extends WorkParameters> extends Describable, ActionConfiguration {

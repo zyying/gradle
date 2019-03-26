@@ -19,6 +19,7 @@ package org.gradle.language.scala.internal.toolchain;
 import org.gradle.api.artifacts.ConfigurationContainer;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.internal.GradleInternal;
+import org.gradle.internal.instantiation.InstantiatorFactory;
 import org.gradle.internal.service.ServiceRegistration;
 import org.gradle.internal.service.scopes.AbstractPluginServiceRegistry;
 import org.gradle.process.internal.JavaForkOptionsFactory;
@@ -33,8 +34,8 @@ public class ScalaToolChainServiceRegistry extends AbstractPluginServiceRegistry
     }
 
     private static class ProjectScopeCompileServices {
-        ScalaToolChainInternal createScalaToolChain(GradleInternal gradle, WorkerDaemonFactory workerDaemonFactory, ConfigurationContainer configurationContainer, DependencyHandler dependencyHandler, JavaForkOptionsFactory forkOptionsFactory, WorkerDirectoryProvider workerDirectoryProvider) {
-            return new DownloadingScalaToolChain(gradle.getGradleUserHomeDir(), workerDirectoryProvider.getWorkingDirectory(), workerDaemonFactory, configurationContainer, dependencyHandler, forkOptionsFactory);
+        ScalaToolChainInternal createScalaToolChain(GradleInternal gradle, WorkerDaemonFactory workerDaemonFactory, ConfigurationContainer configurationContainer, DependencyHandler dependencyHandler, JavaForkOptionsFactory forkOptionsFactory, WorkerDirectoryProvider workerDirectoryProvider, InstantiatorFactory instantiatorFactory) {
+            return new DownloadingScalaToolChain(gradle.getGradleUserHomeDir(), workerDirectoryProvider.getWorkingDirectory(), workerDaemonFactory, configurationContainer, dependencyHandler, forkOptionsFactory, instantiatorFactory);
         }
     }
 }

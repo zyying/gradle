@@ -43,10 +43,12 @@ import static org.gradle.process.internal.util.MergeOptionsUtil.normalized;
 public abstract class AbstractDaemonCompiler<T extends CompileSpec> implements Compiler<T> {
     private final Compiler<T> delegate;
     private final WorkerFactory workerFactory;
+    private final InstantiatorFactory instantiatorFactory;
 
-    public AbstractDaemonCompiler(Compiler<T> delegate, WorkerFactory workerFactory) {
+    public AbstractDaemonCompiler(Compiler<T> delegate, WorkerFactory workerFactory, InstantiatorFactory instantiatorFactory) {
         this.delegate = delegate;
         this.workerFactory = workerFactory;
+        this.instantiatorFactory = instantiatorFactory;
     }
 
     public Compiler<T> getDelegate() {
@@ -57,7 +59,8 @@ public abstract class AbstractDaemonCompiler<T extends CompileSpec> implements C
     public WorkResult execute(T spec) {
         DaemonForkOptions daemonForkOptions = toDaemonForkOptions(spec);
         Worker worker = workerFactory.getWorker(daemonForkOptions);
-        WrappedParameters wrappedParameters = new DefaultWrappedParameters(new Object[] {delegate, spec});
+        WrappedParameters wrappedParameters = instantiatorFactory.injectScheme().forType(WrappedParameters.class).newInstance();
+        wrappedParameters.setParams(new Object[] {delegate, spec});
         DefaultWorkResult result = worker.execute(new WrappedActionExecutionSpec<WrappedParameters>(WrappedCallableWorkAction.class, "compiler daemon", wrappedParameters, CompilerCallable.class));
         if (result.isSuccess()) {
             return result;
@@ -94,11 +97,11 @@ public abstract class AbstractDaemonCompiler<T extends CompileSpec> implements C
         }
     }
 
-    private abstract static class WrappedCallableWorkAction implements WrappedWorkAction<WrappedParameters>, HasWorkResult {
+    public abstract static class WrappedCallableWorkAction implements WrappedWorkAction<WrappedParameters>, HasWorkResult {
         private WorkResult workResult;
 
         @Inject
-        InstantiatorFactory getInstantiatorFactory() {
+        public InstantiatorFactory getInstantiatorFactory() {
             throw new UnsupportedOperationException();
         }
 

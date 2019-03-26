@@ -17,16 +17,16 @@
 package org.gradle.workers.internal;
 
 import com.google.common.collect.ImmutableList;
+import org.gradle.api.Action;
 import org.gradle.api.tasks.WorkResult;
-import org.gradle.internal.instantiation.InstantiationScheme;
 import org.gradle.internal.instantiation.InstantiatorFactory;
-import org.gradle.internal.isolation.Isolatable;
-import org.gradle.internal.isolation.IsolatableFactory;
 import org.gradle.internal.service.ServiceLookup;
 import org.gradle.internal.service.ServiceLookupWithInjectionPoints;
 import org.gradle.internal.service.UnknownServiceException;
 import org.gradle.workers.WorkAction;
 import org.gradle.workers.WorkParameters;
+import org.gradle.workers.WorkerConfiguration;
+import org.gradle.workers.WorkerExecutionException;
 import org.gradle.workers.WorkerExecutor;
 
 import javax.inject.Inject;
@@ -76,7 +76,7 @@ public class DefaultWorkerServer implements WorkerProtocol {
         return "DefaultWorkerServer{}";
     }
 
-    private static class WorkActionServiceLookup extends ServiceLookupWithInjectionPoints {
+    static class WorkActionServiceLookup extends ServiceLookupWithInjectionPoints {
         private final ImmutableList<InjectionPoint> injectionPoints;
 
         public WorkActionServiceLookup(final WorkParameters parameters, final WorkerExecutor workerExecutor, final InstantiatorFactory instantiatorFactory) {
@@ -97,14 +97,16 @@ public class DefaultWorkerServer implements WorkerProtocol {
                 }));
             }
 
-            if (workerExecutor != null) {
-                builder.add(InjectionPoint.injectedByType(WorkerExecutor.class, new Supplier<Object>() {
-                    @Override
-                    public Object get() {
+            builder.add(InjectionPoint.injectedByType(WorkerExecutor.class, new Supplier<Object>() {
+                @Override
+                public Object get() {
+                    if (workerExecutor != null) {
                         return workerExecutor;
+                    } else {
+                        return new UnavailableWorkerExecutor();
                     }
-                }));
-            }
+                }
+            }));
 
             if (instantiatorFactory != null) {
                 builder.add(InjectionPoint.injectedByType(InstantiatorFactory.class, new Supplier<Object>() {
@@ -121,6 +123,22 @@ public class DefaultWorkerServer implements WorkerProtocol {
         @Override
         public Collection<InjectionPoint> getInjectionPoints() {
             return injectionPoints;
+        }
+    }
+
+    private static class UnavailableWorkerExecutor implements WorkerExecutor {
+        @Override
+        public void submit(Class<? extends Runnable> actionClass, Action<? super WorkerConfiguration> configAction) {
+            throw unavailable();
+        }
+
+        @Override
+        public void await() throws WorkerExecutionException {
+            throw unavailable();
+        }
+
+        private RuntimeException unavailable() {
+            return new UnsupportedOperationException("WorkerExecutor is not available when using this isolation mode.");
         }
     }
 }

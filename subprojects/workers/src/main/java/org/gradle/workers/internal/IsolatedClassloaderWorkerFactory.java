@@ -18,20 +18,14 @@ package org.gradle.workers.internal;
 
 import org.gradle.api.internal.classloading.GroovySystemLoader;
 import org.gradle.api.internal.classloading.GroovySystemLoaderFactory;
-import org.gradle.api.internal.initialization.loadercache.DefaultClasspathHasher;
 import org.gradle.api.logging.LogLevel;
 import org.gradle.api.logging.Logger;
 import org.gradle.cache.internal.DefaultCrossBuildInMemoryCacheFactory;
 import org.gradle.internal.UncheckedException;
 import org.gradle.internal.classloader.CachingClassLoader;
 import org.gradle.internal.classloader.ClassLoaderFactory;
-import org.gradle.internal.classloader.ClasspathUtil;
-import org.gradle.internal.classloader.ConfigurableClassLoaderHierarchyHasher;
-import org.gradle.internal.classloader.DefaultHashingClassLoaderFactory;
 import org.gradle.internal.classloader.FilteringClassLoader;
-import org.gradle.internal.classloader.HashingClassLoaderFactory;
 import org.gradle.internal.classloader.MultiParentClassLoader;
-import org.gradle.internal.classloader.VisitableURLClassLoader;
 import org.gradle.internal.classpath.DefaultClassPath;
 import org.gradle.internal.concurrent.CompositeStoppable;
 import org.gradle.internal.event.DefaultListenerManager;
@@ -43,10 +37,8 @@ import org.gradle.internal.operations.BuildOperationExecutor;
 import org.gradle.internal.operations.BuildOperationRef;
 import org.gradle.internal.serialize.ExceptionReplacingObjectInputStream;
 import org.gradle.internal.serialize.ExceptionReplacingObjectOutputStream;
-import org.gradle.internal.snapshot.impl.DefaultValueSnapshotter;
 import org.gradle.util.GUtil;
 import org.gradle.workers.IsolationMode;
-import org.gradle.workers.WorkAction;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -55,7 +47,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.concurrent.Callable;
 
 public class IsolatedClassloaderWorkerFactory implements WorkerFactory {
@@ -174,7 +165,7 @@ public class IsolatedClassloaderWorkerFactory implements WorkerFactory {
         public Object call() throws Exception {
             // TODO - reuse these services, either by making the global instances visible or by reusing the worker ClassLoaders and retaining a reference to them
             DefaultInstantiatorFactory instantiatorFactory = new DefaultInstantiatorFactory(new DefaultCrossBuildInMemoryCacheFactory(new DefaultListenerManager()), Collections.<InjectAnnotationHandler>emptyList());
-            WorkerProtocol worker = new DefaultWorkerServer(instantiatorFactory,null);
+            WorkerProtocol worker = new DefaultWorkerServer(instantiatorFactory, null);
             return worker.execute(spec);
         }
     }

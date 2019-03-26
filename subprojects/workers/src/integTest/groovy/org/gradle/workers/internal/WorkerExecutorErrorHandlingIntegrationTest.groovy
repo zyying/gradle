@@ -129,8 +129,8 @@ class WorkerExecutorErrorHandlingIntegrationTest extends AbstractWorkerExecutorI
 
         then:
         failureHasCause("A failure occurred while executing org.gradle.test.TestRunnable")
-        failureHasCause("Could not serialize parameters")
-        failureHasCause("Broken")
+        failureHasCause("Could not isolate value:")
+        failureHasCause("java.io.IOException: Broken")
 
         and:
         executedAndNotSkipped(":runAgainInWorker")
@@ -167,8 +167,8 @@ class WorkerExecutorErrorHandlingIntegrationTest extends AbstractWorkerExecutorI
 
         then:
         failureHasCause("A failure occurred while executing org.gradle.test.TestRunnable")
-        failureHasCause("Could not deserialize parameters")
-        failureHasCause("Broken")
+        failureHasCause("Could not isolate value:")
+        failureHasCause("java.io.IOException: Broken")
 
         and:
         executedAndNotSkipped(":runAgainInWorker")

@@ -25,6 +25,7 @@ import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.nativeplatform.toolchain.internal.PCHUtils;
 import org.gradle.workers.IsolationMode;
+import org.gradle.workers.WorkParameters;
 import org.gradle.workers.WorkerConfiguration;
 import org.gradle.workers.WorkerExecutor;
 
@@ -52,12 +53,9 @@ public class PrefixHeaderFileGenerateTask extends DefaultTask {
 
     @TaskAction
     void generatePrefixHeaderFile() {
-        workerExecutor.submit(GeneratePrefixHeaderFile.class, new Action<WorkerConfiguration>() {
-            @Override
-            public void execute(WorkerConfiguration config) {
-                config.setIsolationMode(IsolationMode.NONE);
-                config.setParams(header, prefixHeaderFile);
-            }
+        workerExecutor.submit(GeneratePrefixHeaderFile.class, workerConfiguration -> {
+            workerConfiguration.setIsolationMode(IsolationMode.NONE);
+            workerConfiguration.setParams(header, prefixHeaderFile);
         });
     }
 

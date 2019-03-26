@@ -20,7 +20,13 @@ import com.google.common.util.concurrent.ListenableFutureTask
 import org.gradle.api.internal.file.TestFiles
 import org.gradle.internal.Factory
 import org.gradle.internal.exceptions.DefaultMultiCauseException
+import org.gradle.internal.instantiation.InstantiationScheme
+import org.gradle.internal.instantiation.InstantiatorFactory
+import org.gradle.internal.isolation.Isolatable
+import org.gradle.internal.isolation.IsolatableFactory
 import org.gradle.internal.operations.BuildOperationExecutor
+import org.gradle.internal.reflect.Instantiator
+import org.gradle.internal.state.Managed
 import org.gradle.internal.work.AsyncWorkTracker
 import org.gradle.internal.work.ConditionalExecutionQueue
 import org.gradle.internal.work.WorkerLeaseRegistry
@@ -54,7 +60,7 @@ class DefaultWorkerExecutorParallelTest extends ConcurrentSpec {
 
     def setup() {
         _ * executionQueueFactory.create() >> executionQueue
-        workerExecutor = new DefaultWorkerExecutor(workerDaemonFactory, workerInProcessFactory, workerNoIsolationFactory, forkOptionsFactory, buildOperationWorkerRegistry, buildOperationExecutor, asyncWorkerTracker, workerDirectoryProvider, executionQueueFactory, parametersInstantiationScheme, instantiatorFactory)
+        workerExecutor = new DefaultWorkerExecutor(workerDaemonFactory, workerInProcessFactory, workerNoIsolationFactory, forkOptionsFactory, buildOperationWorkerRegistry, buildOperationExecutor, asyncWorkerTracker, workerDirectoryProvider, executionQueueFactory, instantiatorFactory(), isolatableFactory())
     }
 
     @Unroll
@@ -110,6 +116,30 @@ class DefaultWorkerExecutorParallelTest extends ConcurrentSpec {
             create() >> Stub(File)
         }
     }
+
+    InstantiatorFactory instantiatorFactory() {
+        def instantiatorFactory = Stub(InstantiatorFactory)
+        InstantiationScheme scheme = Mock(InstantiationScheme)
+        _ * instantiatorFactory.injectScheme() >> scheme
+        Instantiator instantiator = Mock(Instantiator)
+        _ * scheme.instantiator() >> instantiator
+        _ * instantiator.newInstance(WrappedParameters.class, _) >> parameters()
+        return instantiatorFactory
+    }
+
+    IsolatableFactory isolatableFactory() {
+        def isolatableFactory = Stub(IsolatableFactory)
+        _ * isolatableFactory.isolate(_) >> Mock(Isolatable) {
+            _ * isolate() >> parameters()
+        }
+        return isolatableFactory
+    }
+
+    WrappedParameters parameters() {
+        return Mock(TestParameters)
+    }
+
+    interface TestParameters extends WrappedParameters, Managed { }
 
     static class TestRunnable implements Runnable {
         @Override

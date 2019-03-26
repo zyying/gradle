@@ -19,6 +19,7 @@ package org.gradle.workers.internal
 import org.gradle.internal.operations.BuildOperationContext
 import org.gradle.internal.operations.BuildOperationExecutor
 import org.gradle.internal.operations.BuildOperationRef
+import org.gradle.internal.state.Managed
 import spock.lang.Specification
 import spock.lang.Subject
 
@@ -31,12 +32,13 @@ class WorkerDaemonFactoryTest extends Specification {
 
     @Subject factory = new WorkerDaemonFactory(clientsManager, buildOperationExecutor)
 
-    def workingDir = new File("some-dir")
     def options = Stub(DaemonForkOptions)
-    def spec = Stub(ActionExecutionSpec)
+    def parameters = Mock(TestParameters)
+    def spec = new WrappedActionExecutionSpec(null, "test", parameters, null)
 
     def setup() {
         _ * buildOperationExecutor.getCurrentOperation() >> buildOperation
+        _ * parameters.getParams() >> []
     }
 
     def "getting a worker daemon does not assume client use"() {
@@ -59,7 +61,7 @@ class WorkerDaemonFactoryTest extends Specification {
 
         then:
         1 * buildOperationExecutor.call(_) >> { args -> args[0].call(Stub(BuildOperationContext)) }
-        1 * client.execute(spec) >> new DefaultWorkResult(true, null)
+        1 * client.execute(_) >> new DefaultWorkResult(true, null)
 
         then:
         1 * clientsManager.release(client)
@@ -74,7 +76,7 @@ class WorkerDaemonFactoryTest extends Specification {
 
         then:
         1 * buildOperationExecutor.call(_) >> { args -> args[0].call(Stub(BuildOperationContext)) }
-        1 * client.execute(spec) >> new DefaultWorkResult(true, null)
+        1 * client.execute(_) >> new DefaultWorkResult(true, null)
 
         then:
         1 * clientsManager.release(client)
@@ -89,7 +91,7 @@ class WorkerDaemonFactoryTest extends Specification {
 
         then:
         1 * buildOperationExecutor.call(_) >> { args -> args[0].call() }
-        1 * client.execute(spec) >> { throw new RuntimeException("Boo!") }
+        1 * client.execute(_) >> { throw new RuntimeException("Boo!") }
 
         then:
         thrown(RuntimeException)
@@ -112,9 +114,11 @@ class WorkerDaemonFactoryTest extends Specification {
         then:
         1 * clientsManager.reserveIdleClient(options) >> client
         1 * buildOperationExecutor.call(_) >> { args -> args[0].call() }
-        1 * client.execute(spec) >> { throw new RuntimeException("Boo!") }
+        1 * client.execute(_) >> { throw new RuntimeException("Boo!") }
 
         then:
         thrown(RuntimeException)
     }
+
+    interface TestParameters extends WrappedParameters, Managed { }
 }

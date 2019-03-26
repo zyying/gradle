@@ -23,6 +23,7 @@ import org.gradle.api.artifacts.Dependency
 import org.gradle.api.artifacts.ResolveException
 import org.gradle.api.artifacts.dsl.DependencyHandler
 import org.gradle.api.internal.tasks.scala.ScalaCompileSpec
+import org.gradle.internal.instantiation.InstantiatorFactory
 import org.gradle.internal.logging.text.TreeFormatter
 import org.gradle.language.scala.ScalaPlatform
 import org.gradle.process.internal.JavaForkOptionsFactory
@@ -36,9 +37,10 @@ class DownloadingScalaToolChainTest extends Specification {
     WorkerDaemonFactory workerDaemonFactory = Mock()
     DependencyHandler dependencyHandler = Mock()
     JavaForkOptionsFactory forkOptionsFactory = Mock()
+    InstantiatorFactory instantiatorFactory = Mock()
     File gradleUserHome = Mock()
     File rootProjectDir = Mock()
-    DownloadingScalaToolChain scalaToolChain = new DownloadingScalaToolChain(gradleUserHome, rootProjectDir, workerDaemonFactory, configurationContainer, dependencyHandler, forkOptionsFactory)
+    DownloadingScalaToolChain scalaToolChain = new DownloadingScalaToolChain(gradleUserHome, rootProjectDir, workerDaemonFactory, configurationContainer, dependencyHandler, forkOptionsFactory, instantiatorFactory)
     ScalaPlatform scalaPlatform = Mock()
 
     def setup() {

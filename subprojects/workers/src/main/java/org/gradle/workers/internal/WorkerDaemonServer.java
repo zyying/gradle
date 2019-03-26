@@ -22,7 +22,6 @@ import org.gradle.internal.event.DefaultListenerManager;
 import org.gradle.internal.instantiation.DefaultInstantiatorFactory;
 import org.gradle.internal.instantiation.InjectAnnotationHandler;
 import org.gradle.internal.instantiation.InstantiatorFactory;
-import org.gradle.internal.isolation.IsolatableFactory;
 import org.gradle.workers.WorkParameters;
 
 import java.util.Collections;

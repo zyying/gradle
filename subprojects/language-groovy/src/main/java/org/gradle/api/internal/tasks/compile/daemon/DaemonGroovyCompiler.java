@@ -22,6 +22,7 @@ import org.gradle.api.internal.tasks.compile.BaseForkOptionsConverter;
 import org.gradle.api.internal.tasks.compile.GroovyJavaJointCompileSpec;
 import org.gradle.api.tasks.compile.ForkOptions;
 import org.gradle.api.tasks.compile.GroovyForkOptions;
+import org.gradle.internal.instantiation.InstantiatorFactory;
 import org.gradle.internal.jvm.GroovyJpmsWorkarounds;
 import org.gradle.internal.jvm.inspection.JvmVersionDetector;
 import org.gradle.language.base.internal.compile.Compiler;
@@ -43,8 +44,8 @@ public class DaemonGroovyCompiler extends AbstractDaemonCompiler<GroovyJavaJoint
     private final File daemonWorkingDir;
     private final JvmVersionDetector jvmVersionDetector;
 
-    public DaemonGroovyCompiler(File daemonWorkingDir, Compiler<GroovyJavaJointCompileSpec> delegate, ClassPathRegistry classPathRegistry, WorkerFactory workerFactory, JavaForkOptionsFactory forkOptionsFactory, JvmVersionDetector jvmVersionDetector) {
-        super(delegate, workerFactory);
+    public DaemonGroovyCompiler(File daemonWorkingDir, Compiler<GroovyJavaJointCompileSpec> delegate, ClassPathRegistry classPathRegistry, WorkerFactory workerFactory, JavaForkOptionsFactory forkOptionsFactory, JvmVersionDetector jvmVersionDetector, InstantiatorFactory instantiatorFactory) {
+        super(delegate, workerFactory, instantiatorFactory);
         this.classPathRegistry = classPathRegistry;
         this.forkOptionsFactory = forkOptionsFactory;
         this.daemonWorkingDir = daemonWorkingDir;
