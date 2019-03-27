@@ -21,10 +21,12 @@ import org.gradle.test.fixtures.file.TestFile
 import org.gradle.util.AntUtil
 import org.gradle.util.Requires
 import org.gradle.util.TestPrecondition
+import org.junit.experimental.categories.Category
 
 import static org.gradle.api.internal.artifacts.BaseRepositoryFactory.PLUGIN_PORTAL_OVERRIDE_URL_PROPERTY
 import static org.gradle.integtests.fixtures.RepoScriptBlockUtil.gradlePluginRepositoryMirrorUrl
 
+@Category(GradleDistributionTest)
 class SrcDistributionIntegrationSpec extends DistributionIntegrationSpec {
 
     @Override

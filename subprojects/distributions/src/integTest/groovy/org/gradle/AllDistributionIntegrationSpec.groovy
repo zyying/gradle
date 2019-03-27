@@ -18,10 +18,12 @@ package org.gradle
 
 import groovy.io.FileType
 import org.gradle.test.fixtures.file.TestFile
+import org.junit.experimental.categories.Category
 import spock.lang.Shared
 
 import static org.hamcrest.Matchers.containsString
 
+@Category(GradleDistributionTest)
 class AllDistributionIntegrationSpec extends DistributionIntegrationSpec {
 
     @Shared String version = buildContext.distZipVersion.version

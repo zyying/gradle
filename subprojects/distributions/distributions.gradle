@@ -183,10 +183,21 @@ artifacts {
     dists allZip, binZip, srcZip
 }
 
-integTestTasks.configureEach {
+tasks.named('integTest').configure {
+    options {
+        excludeCategories 'org.gradle.GradleDistributionTest'
+    }
+}
+
+tasks.register('distributionsTest', org.gradle.gradlebuild.test.integrationtests.IntegrationTest) {
+    testClassesDirs = sourceSets.integTest.output.classesDirs
+    classpath = sourceSets.integTest.runtimeClasspath
     binaryDistributions.distributionsRequired = true
     systemProperty 'org.gradle.public.api.includes', PublicApi.includes.join(':')
     systemProperty 'org.gradle.public.api.excludes', PublicApi.excludes.join(':')
+    options {
+        includeCategories 'org.gradle.GradleDistributionTest'
+    }
 }
 
 apply from: 'binary-compatibility.gradle'

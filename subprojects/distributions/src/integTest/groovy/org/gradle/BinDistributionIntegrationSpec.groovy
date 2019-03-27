@@ -17,7 +17,9 @@
 package org.gradle
 
 import org.gradle.test.fixtures.file.TestFile
+import org.junit.experimental.categories.Category
 
+@Category(GradleDistributionTest)
 class BinDistributionIntegrationSpec extends DistributionIntegrationSpec {
 
     @Override
