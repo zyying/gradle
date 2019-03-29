@@ -169,6 +169,11 @@ class ClientModuleScope(
     override val delegate: ClientModule
         get() = clientModule
 
+    override
+    fun ignoreVersion(notation: Any) {
+        clientModule.ignoreVersion(notation)
+    }
+
     fun module(
         group: String,
         name: String,

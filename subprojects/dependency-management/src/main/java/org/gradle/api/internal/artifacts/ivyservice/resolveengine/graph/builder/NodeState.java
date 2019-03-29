@@ -22,6 +22,7 @@ import com.google.common.collect.Sets;
 import org.gradle.api.Action;
 import org.gradle.api.artifacts.ModuleIdentifier;
 import org.gradle.api.artifacts.component.ComponentIdentifier;
+import org.gradle.api.artifacts.component.ComponentSelector;
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
 import org.gradle.api.artifacts.component.ModuleComponentSelector;
 import org.gradle.api.capabilities.Capability;
@@ -82,6 +83,7 @@ public class NodeState implements DependencyGraphNode {
     private boolean evicted;
     private Set<ModuleIdentifier> upcomingNoLongerPendingConstraints;
     private boolean virtualPlatformNeedsRefresh;
+    private Set<Object> commonIgnoredVersions = Collections.emptySet();
 
     public NodeState(Long resultId, ResolvedConfigurationIdentifier id, ComponentState component, ResolveState resolveState, ConfigurationMetadata md) {
         this.resultId = resultId;
@@ -270,11 +272,30 @@ public class NodeState implements DependencyGraphNode {
         PendingDependenciesVisitor pendingDepsVisitor = resolveState.newPendingDependenciesVisitor();
         try {
             for (DependencyMetadata dependency : metaData.getDependencies()) {
+                ModuleIdentifier ignoredModule = null;
+                for (Object ignoredVersion : commonIgnoredVersions) {
+                    ComponentSelector selector = dependency.getSelector();
+                    if (selector instanceof ModuleComponentSelector) {
+                        ModuleComponentSelector moduleComponentSelector = (ModuleComponentSelector) selector;
+                        if (moduleComponentSelector.getGroup().equals(ignoredVersion)) {
+                            ignoredModule = moduleComponentSelector.getModuleIdentifier();
+                            break;
+                        }
+                    }
+                }
                 DependencyState dependencyState = new DependencyState(dependency, resolveState.getComponentSelectorConverter());
                 if (isExcluded(resolutionFilter, dependencyState)) {
                     continue;
                 }
                 dependencyState = maybeSubstitute(dependencyState, resolveState.getDependencySubstitutionApplicator());
+                if (ignoredModule != null) {
+                    dependencyState = dependencyState.withRequested(
+                        DefaultModuleComponentSelector.newSelector(
+                            ignoredModule,
+                            ""
+                        )
+                    );
+                }
                 if (!pendingDepsVisitor.maybeAddAsPendingDependency(this, dependencyState)) {
                     createAndLinkEdgeState(dependencyState, discoveredEdges, resolutionFilter);
                 }
@@ -298,7 +319,6 @@ public class NodeState implements DependencyGraphNode {
     /**
      * Iterate over the dependencies originating in this node, adding only the constraints listed
      * in upcomingNoLongerPendingConstraints
-     * @param discoveredEdges
      */
     private void visitAdditionalConstraints(Collection<EdgeState> discoveredEdges) {
         for (DependencyMetadata dependency : metaData.getDependencies()) {
@@ -419,12 +439,34 @@ public class NodeState implements DependencyGraphNode {
 
     public void addIncomingEdge(EdgeState dependencyEdge) {
         incomingEdges.add(dependencyEdge);
+        recomputeCommonIgnoredVersions();
         resolveState.onMoreSelected(this);
     }
 
     public void removeIncomingEdge(EdgeState dependencyEdge) {
         incomingEdges.remove(dependencyEdge);
+        recomputeCommonIgnoredVersions();
         resolveState.onFewerSelected(this);
+    }
+
+    private void recomputeCommonIgnoredVersions() {
+        Set<Object> commonIgnores = null;
+
+        for (EdgeState incomingEdge : incomingEdges) {
+            Set<Object> ignoredVersions = incomingEdge.getIgnoredVersions();
+            if (commonIgnores == null) {
+                commonIgnores = Sets.newHashSet(ignoredVersions);
+            } else {
+                commonIgnores.retainAll(ignoredVersions);
+            }
+        }
+        if (commonIgnores == null) {
+            commonIgnores = Collections.emptySet();
+        }
+        if (!commonIgnores.equals(commonIgnoredVersions)) {
+            virtualPlatformNeedsRefresh = true;
+        }
+        commonIgnoredVersions = commonIgnores;
     }
 
     public boolean isSelected() {
@@ -625,5 +667,9 @@ public class NodeState implements DependencyGraphNode {
     boolean isSelectedByVariantAwareResolution() {
         // the order is strange logically but here for performance optimization
         return selectedByVariantAwareResolution && isSelected();
+    }
+
+    Set<Object> getCommonIgnoredVersions() {
+        return commonIgnoredVersions;
     }
 }

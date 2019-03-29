@@ -35,7 +35,9 @@ import org.gradle.internal.component.model.ForcingDependencyMetadata;
 import org.gradle.internal.component.model.IvyArtifactName;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 public class GradleDependencyMetadata implements ModuleDependencyMetadata, ForcingDependencyMetadata {
     private final ModuleComponentSelector selector;
@@ -71,6 +73,11 @@ public class GradleDependencyMetadata implements ModuleDependencyMetadata, Forci
             return this;
         }
         return new GradleDependencyMetadata(selector, excludes, constraint, reason, force);
+    }
+
+    @Override
+    public Set<Object> getIgnoredVersions() {
+        return Collections.emptySet();
     }
 
     @Override

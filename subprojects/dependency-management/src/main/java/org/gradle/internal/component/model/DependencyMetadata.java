@@ -23,6 +23,7 @@ import org.gradle.api.internal.attributes.ImmutableAttributes;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 /**
  * A dependency that can participate in dependency resolution.
@@ -85,4 +86,6 @@ public interface DependencyMetadata {
      * Returns a copy of this dependency with the given selection reason.
      */
     DependencyMetadata withReason(String reason);
+
+    Set<Object> getIgnoredVersions();
 }

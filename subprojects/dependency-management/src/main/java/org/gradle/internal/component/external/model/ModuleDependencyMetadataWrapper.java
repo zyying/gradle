@@ -28,7 +28,9 @@ import org.gradle.internal.component.model.ExcludeMetadata;
 import org.gradle.internal.component.model.IvyArtifactName;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 public class ModuleDependencyMetadataWrapper implements ModuleDependencyMetadata {
     private final DependencyMetadata delegate;
@@ -54,6 +56,11 @@ public class ModuleDependencyMetadataWrapper implements ModuleDependencyMetadata
     @Override
     public ModuleDependencyMetadata withReason(String reason) {
         return new ModuleDependencyMetadataWrapper(delegate.withReason(reason));
+    }
+
+    @Override
+    public Set<Object> getIgnoredVersions() {
+        return Collections.emptySet();
     }
 
     @Override

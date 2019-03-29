@@ -32,7 +32,9 @@ import org.gradle.internal.exceptions.ConfigurationNotConsumableException;
 import org.gradle.util.GUtil;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 public class LocalComponentDependencyMetadata implements LocalOriginDependencyMetadata {
     private final ComponentIdentifier componentId;
@@ -216,6 +218,11 @@ public class LocalComponentDependencyMetadata implements LocalOriginDependencyMe
             return this;
         }
         return copyWithReason(reason);
+    }
+
+    @Override
+    public Set<Object> getIgnoredVersions() {
+        return Collections.emptySet();
     }
 
     private LocalOriginDependencyMetadata copyWithTarget(ComponentSelector selector) {

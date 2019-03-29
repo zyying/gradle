@@ -19,6 +19,7 @@ package org.gradle.internal.component.local.model;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.component.ComponentSelector;
 import org.gradle.api.capabilities.Capability;
+import org.gradle.api.internal.artifacts.ResolvableDependency;
 import org.gradle.api.internal.attributes.AttributesSchemaInternal;
 import org.gradle.api.internal.attributes.ImmutableAttributes;
 import org.gradle.internal.component.model.ComponentResolveMetadata;
@@ -29,7 +30,9 @@ import org.gradle.internal.component.model.IvyArtifactName;
 import org.gradle.internal.component.model.LocalOriginDependencyMetadata;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 public class DslOriginDependencyMetadataWrapper implements DslOriginDependencyMetadata, LocalOriginDependencyMetadata {
     private final LocalOriginDependencyMetadata delegate;
@@ -115,6 +118,14 @@ public class DslOriginDependencyMetadataWrapper implements DslOriginDependencyMe
     @Override
     public DependencyMetadata withReason(String reason) {
         return delegate.withReason(reason);
+    }
+
+    @Override
+    public Set<Object> getIgnoredVersions() {
+        if (source instanceof ResolvableDependency) {
+            return ((ResolvableDependency) source).getIgnoredVersions();
+        }
+        return Collections.emptySet();
     }
 
     @Override

@@ -16,6 +16,9 @@
 
 package org.gradle.api.internal.artifacts;
 
+import java.util.Set;
+
 public interface ResolvableDependency {
     void resolve(DependencyResolveContext context);
+    Set<Object> getIgnoredVersions();
 }

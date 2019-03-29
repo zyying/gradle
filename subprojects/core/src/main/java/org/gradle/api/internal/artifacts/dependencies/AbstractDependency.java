@@ -16,12 +16,17 @@
 
 package org.gradle.api.internal.artifacts.dependencies;
 
+import com.google.common.collect.Sets;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.internal.artifacts.DependencyResolveContext;
 import org.gradle.api.internal.artifacts.ResolvableDependency;
 
+import java.util.Collections;
+import java.util.Set;
+
 public abstract class AbstractDependency implements ResolvableDependency, Dependency {
     private String reason;
+    private Set<Object> ignoredVersions;
 
     protected void copyTo(AbstractDependency target) {
         target.reason = reason;
@@ -38,5 +43,18 @@ public abstract class AbstractDependency implements ResolvableDependency, Depend
     @Override
     public void because(String reason) {
         this.reason = reason;
+    }
+
+    @Override
+    public void ignoreVersion(Object notation) {
+        if (ignoredVersions == null) {
+            ignoredVersions = Sets.newHashSet();
+        }
+        ignoredVersions.add(notation);
+    }
+
+    @Override
+    public Set<Object> getIgnoredVersions() {
+        return ignoredVersions == null ? Collections.emptySet() : ignoredVersions;
     }
 }

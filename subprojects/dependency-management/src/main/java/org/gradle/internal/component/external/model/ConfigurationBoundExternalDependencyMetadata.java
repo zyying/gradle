@@ -34,7 +34,9 @@ import org.gradle.internal.component.model.ExcludeMetadata;
 import org.gradle.internal.component.model.IvyArtifactName;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 /**
  * A `ModuleDependencyMetadata` implementation that is backed by an `ExternalDependencyDescriptor` bound to a particular
@@ -140,6 +142,11 @@ public class ConfigurationBoundExternalDependencyMetadata implements ModuleDepen
             return this;
         }
         return new ConfigurationBoundExternalDependencyMetadata(configuration, componentId, dependencyDescriptor, alwaysUseAttributeMatching, reason);
+    }
+
+    @Override
+    public Set<Object> getIgnoredVersions() {
+        return Collections.emptySet();
     }
 
     public ConfigurationBoundExternalDependencyMetadata withDescriptor(ExternalDependencyDescriptor descriptor) {

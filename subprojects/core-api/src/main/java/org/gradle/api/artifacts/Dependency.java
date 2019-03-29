@@ -85,4 +85,6 @@ public interface Dependency {
      */
     @Incubating
     void because(@Nullable String reason);
+
+    void ignoreVersion(Object notation);
 }

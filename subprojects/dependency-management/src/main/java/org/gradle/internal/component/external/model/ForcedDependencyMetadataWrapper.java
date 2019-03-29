@@ -30,6 +30,7 @@ import org.gradle.internal.component.model.IvyArtifactName;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 public class ForcedDependencyMetadataWrapper implements ForcingDependencyMetadata, ModuleDependencyMetadata {
     private final ModuleDependencyMetadata delegate;
@@ -51,6 +52,11 @@ public class ForcedDependencyMetadataWrapper implements ForcingDependencyMetadat
     @Override
     public ModuleDependencyMetadata withReason(String reason) {
         return new ForcedDependencyMetadataWrapper(delegate.withReason(reason));
+    }
+
+    @Override
+    public Set<Object> getIgnoredVersions() {
+        return delegate.getIgnoredVersions();
     }
 
     @Override

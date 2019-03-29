@@ -18,6 +18,7 @@ package org.gradle.api.internal.artifacts.ivyservice.resolveengine.graph.builder
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import org.gradle.api.Transformer;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.ModuleIdentifier;
@@ -38,6 +39,7 @@ import org.gradle.util.CollectionUtils;
 
 import javax.annotation.Nullable;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Represents the edges in the dependency graph.
@@ -285,5 +287,10 @@ class EdgeState implements DependencyGraphEdge {
         if (!isConstraint) {
             selector.getTargetModule().decreaseHardEdgeCount();
         }
+    }
+
+    Set<Object> getIgnoredVersions() {
+        Set<Object> ignoredVersions = dependencyMetadata.getIgnoredVersions();
+        return Sets.union(ignoredVersions, from.getCommonIgnoredVersions());
     }
 }

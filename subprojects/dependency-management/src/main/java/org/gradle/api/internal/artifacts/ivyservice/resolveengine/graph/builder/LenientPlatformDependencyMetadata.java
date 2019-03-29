@@ -80,6 +80,11 @@ class LenientPlatformDependencyMetadata implements ModuleDependencyMetadata, For
     }
 
     @Override
+    public Set<Object> getIgnoredVersions() {
+        return Collections.emptySet();
+    }
+
+    @Override
     public List<ConfigurationMetadata> selectConfigurations(ImmutableAttributes consumerAttributes, ComponentResolveMetadata targetComponent, AttributesSchemaInternal consumerSchema, Collection<? extends Capability> explicitRequestedCapabilities) {
         if (targetComponent instanceof LenientPlatformResolveMetadata) {
             LenientPlatformResolveMetadata platformMetadata = (LenientPlatformResolveMetadata) targetComponent;

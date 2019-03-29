@@ -70,6 +70,10 @@ class DependencyState {
         return new DependencyState(targeted, requested, ruleDescriptors, componentSelectorConverter);
     }
 
+    DependencyState withRequested(ComponentSelector requested) {
+        return new DependencyState(dependency.withTarget(requested), requested, ruleDescriptors, componentSelectorConverter);
+    }
+
     /**
      * Descriptor for any rules that modify this DependencyState from the original.
      */
