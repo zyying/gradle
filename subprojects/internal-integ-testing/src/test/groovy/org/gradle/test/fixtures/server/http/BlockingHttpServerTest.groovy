@@ -1231,6 +1231,67 @@ class BlockingHttpServerTest extends ConcurrentSpec {
         ]
     }
 
+    def "fails when request that matches next expection is received while waiting to release requests"() {
+        def failure1 = null
+        def failure2 = null
+        def failure3 = null
+
+        given:
+        def handle = server.expectConcurrentAndBlock("a", "b")
+        server.expectConcurrent("c")
+        server.start()
+
+        when:
+        async {
+            start {
+                try {
+                    server.uri("a").toURL().text
+                } catch (Throwable t) {
+                    failure1 = t
+                }
+            }
+            start {
+                server.waitForRequests(1)
+                try {
+                    server.uri("b").toURL().text
+                } catch (Throwable t) {
+                    failure2 = t
+                }
+            }
+            start {
+                server.waitForRequests(2)
+                try {
+                    server.uri("c").toURL().text
+                } catch (Throwable t) {
+                    failure3 = t
+                }
+            }
+            server.waitForRequests(3)
+            handle.waitForAllPendingCalls()
+        }
+
+        then:
+        def waitError = thrown(RuntimeException)
+        waitError.message == "Unexpected request GET /c received. Waiting for 0 further requests, received [GET /a, GET /b], released [], not yet received []"
+
+        failure1 instanceof IOException
+        failure2 instanceof IOException
+        failure3 instanceof IOException
+
+        when:
+        server.stop()
+
+        then:
+        def e = thrown(RuntimeException)
+        e.message == 'Failed to handle all HTTP requests.'
+        e.causes.message.sort() == [
+            'Did not receive expected requests. Waiting for [GET /c], already received []',
+            'Failed to handle GET /a due to unexpected request GET /c. Waiting for 0 further requests, received [GET /a, GET /b], released [], not yet received []',
+            'Failed to handle GET /b due to unexpected request GET /c. Waiting for 0 further requests, received [GET /a, GET /b], released [], not yet received []',
+            'Unexpected request GET /c received. Waiting for 0 further requests, received [GET /a, GET /b], released [], not yet received []',
+        ]
+    }
+
     def "fails when attempting to wait before server is started"() {
         given:
         def handle1 = server.expectConcurrentAndBlock("a", "b")
