@@ -29,6 +29,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -57,6 +58,7 @@ public class BlockingHttpServer extends ExternalResource {
     private final int serverId;
     private boolean running;
     private int clientVarCounter;
+    private URI uri;
 
     public BlockingHttpServer() throws IOException {
         this(120000);
@@ -77,7 +79,10 @@ public class BlockingHttpServer extends ExternalResource {
      */
     public URI getUri() {
         try {
-            return new URI("http://localhost:" + getPort());
+            if (uri != null) {
+                uri = new URI("http://" + InetAddress.getLoopbackAddress().getHostAddress() + ":" + getPort());
+            }
+            return uri;
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }
@@ -87,11 +92,7 @@ public class BlockingHttpServer extends ExternalResource {
      * Returns the URI for the given resource.
      */
     public URI uri(String resource) {
-        try {
-            return new URI("http", null, "localhost", getPort(), "/" + resource, null, null);
-        } catch (URISyntaxException e) {
-            throw new RuntimeException(e);
-        }
+        return getUri().resolve("/" + resource);
     }
 
     /**
