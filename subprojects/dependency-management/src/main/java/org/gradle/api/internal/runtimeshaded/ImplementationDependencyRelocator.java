@@ -44,6 +44,9 @@ class ImplementationDependencyRelocator extends Remapper {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     line = line.trim();
+                    if (line.startsWith("kotlin")) {
+                        continue;
+                    }
                     if (line.length() > 0) {
                         builder.addWord(line);
                     }

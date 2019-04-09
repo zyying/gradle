@@ -42,8 +42,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 /**
- * This task will generate the list of relocated packages into a file that will in turn be used when generating the runtime shaded jars. All we need is a list of packages that need to be relocated, so
- * we'll make sure to filter the list of packages before generating the file.
+ * This task will generate the list of relocated packages into a file that will in turn be used when generating the runtime shaded jars. All we need is a list of packages that need to be relocated, so we'll make sure to filter the list of packages before generating the file.
  *
  * It is assumed that the layout of the directories follow the JVM conventions. This allows us to effectively skip opening the class files to determine the real package name.
  */
@@ -55,6 +54,7 @@ public class PackageListGenerator extends DefaultTask {
         "javax/annotation",
         "javax/inject",
         "javax/xml",
+        "kotlin",
         "groovy",
         "groovyjarjarantlr",
         "net/rubygrapefruit",
