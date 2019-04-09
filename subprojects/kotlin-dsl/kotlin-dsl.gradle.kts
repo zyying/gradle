@@ -34,16 +34,16 @@ dependencies {
 
     api(project(":distributionsDependencies"))
 
-    compileOnly(project(":toolingApi"))
+    implementation(project(":toolingApi"))
 
-    compile(project(":kotlinDslToolingModels"))
+    implementation(project(":kotlinDslToolingModels"))
 
-    compile(project(":kotlinCompilerEmbeddable"))
-    compile(futureKotlin("stdlib-jdk8"))
-    compile(futureKotlin("sam-with-receiver-compiler-plugin")) {
+    implementation(project(":kotlinCompilerEmbeddable"))
+    implementation(futureKotlin("stdlib-jdk8"))
+    implementation(futureKotlin("sam-with-receiver-compiler-plugin")) {
         isTransitive = false
     }
-    compile("org.jetbrains.kotlinx:kotlinx-metadata-jvm:0.0.5") {
+    implementation("org.jetbrains.kotlinx:kotlinx-metadata-jvm:0.0.5") {
         isTransitive = false
     }
 

@@ -48,8 +48,8 @@ sourceSets.main {
 }
 
 dependencies {
-    compileOnly(project(":kotlinDsl"))
-    compileOnly(project(":pluginDevelopment"))
+    implementation(project(":kotlinDsl"))
+    implementation(project(":pluginDevelopment"))
 
     implementation(futureKotlin("stdlib-jdk8"))
     implementation(futureKotlin("gradle-plugin"))
@@ -57,6 +57,8 @@ dependencies {
 
     testImplementation(project(":kotlinDslTestFixtures"))
     testImplementation(project(":plugins"))
+
+    integTestImplementation(project(":kotlinCompilerEmbeddable"))
 
     integTestRuntimeOnly(project(":runtimeApiInfo"))
     integTestRuntimeOnly(project(":apiMetadata"))

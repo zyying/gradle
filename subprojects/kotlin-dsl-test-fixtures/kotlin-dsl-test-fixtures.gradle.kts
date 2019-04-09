@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import build.futureKotlin
 import org.gradle.gradlebuild.unittestandcompile.ModuleType
 
 plugins {
@@ -31,7 +32,9 @@ dependencies {
     compile(project(":distributionsDependencies"))
 
     compile(project(":kotlinDsl"))
+    compile(futureKotlin("stdlib-jdk8"))
     compile(project(":kotlinDslToolingBuilders"))
+    implementation(project(":kotlinCompilerEmbeddable"))
 
     compile(project(":testKit"))
     compile(project(":internalIntegTesting"))
@@ -41,5 +44,4 @@ dependencies {
 
     compile("com.nhaarman:mockito-kotlin:1.6.0")
     compile("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.2")
-    compile("org.ow2.asm:asm:6.2.1")
 }
