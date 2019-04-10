@@ -40,6 +40,7 @@ import org.gradle.internal.typeconversion.NotationConverter;
 import org.gradle.internal.typeconversion.TypeConversionException;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
@@ -116,15 +117,18 @@ public class DependencyClassPathNotationConverter implements NotationConverter<D
     private FileCollectionInternal gradleApiFileCollection(Collection<File> apiClasspath) {
         // Don't inline the Groovy jar as the Groovy “tools locator” searches for it by name
         List<File> groovyImpl = classPathRegistry.getClassPath(LOCAL_GROOVY.name()).getAsFiles();
-        // Remove optional Kotlin DSL and Kotlin jars
+        // Don't relocate the Kotlin DSL and Kotlin jars
         List<File> kotlinDsl = classPathRegistry.getClassPath(GRADLE_KOTLIN_DSL.name()).getAsFiles();
         List<File> installationBeacon = classPathRegistry.getClassPath("GRADLE_INSTALLATION_BEACON").getAsFiles();
-        apiClasspath.removeAll(groovyImpl);
-        apiClasspath.removeAll(kotlinDsl);
-        apiClasspath.removeAll(installationBeacon);
+        List<File> unrelocated = new ArrayList<>();
+        unrelocated.addAll(groovyImpl);
+        unrelocated.addAll(kotlinDsl);
+        unrelocated.addAll(installationBeacon);
+        unrelocated.retainAll(apiClasspath);
+        apiClasspath.removeAll(unrelocated);
 
         return (FileCollectionInternal) relocatedDepsJar(apiClasspath, "gradleApi()", RuntimeShadedJarType.API)
-            .plus(fileResolver.resolveFiles(groovyImpl, installationBeacon));
+            .plus(fileResolver.resolveFiles(unrelocated));
     }
 
     private FileCollectionInternal gradleTestKitFileCollection(Collection<File> testKitClasspath) {

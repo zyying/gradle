@@ -44,6 +44,7 @@ class ImplementationDependencyRelocator extends Remapper {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     line = line.trim();
+                    // TODO - remove this after `PackageListGenerator` is updated
                     if (line.startsWith("kotlin")) {
                         continue;
                     }
