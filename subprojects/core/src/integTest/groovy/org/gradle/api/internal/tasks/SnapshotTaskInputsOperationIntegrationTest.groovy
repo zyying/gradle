@@ -263,7 +263,7 @@ class SnapshotTaskInputsOperationIntegrationTest extends AbstractIntegrationSpec
 
         with(aCompileJava.source) {
             hash != null
-            normalization == "RELATIVE_PATH"
+            normalization == "NAME_ONLY"
             roots.size() == 1
             with(roots[0]) {
                 path == file("a/src/main/java").absolutePath
