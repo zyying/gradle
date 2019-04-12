@@ -33,12 +33,18 @@ plugins {
     // We have to apply it here at the moment, so that when the build scan plugin is auto-applied via --scan can detect that
     // the plugin has been already applied. For that the plugin has to be applied with the new plugin DSL syntax.
     com.gradle.`build-scan`
-    id("org.gradle.ci.tag-single-build") version("0.63")
+    id("org.gradle.ci.tag-single-build") version ("0.63")
 }
 
 defaultTasks("assemble")
 
 base.archivesBaseName = "gradle"
+
+//if(gradle.param)
+//throw IllegalStateException()
+if (gradle.startParameter.taskNames.any { it.contains("quickTest") }) {
+    throw IllegalStateException()
+}
 
 buildTypes {
     create("compileAllBuild") {
@@ -372,12 +378,12 @@ tasks.register<Install>("installAll") {
 }
 
 fun distributionImage(named: String) =
-        project(":distributions").property(named) as CopySpec
+    project(":distributions").property(named) as CopySpec
 
 val allIncubationReports = tasks.register<IncubatingApiAggregateReportTask>("allIncubationReports") {
     val allReports = collectAllIncubationReports()
     dependsOn(allReports)
-    reports = allReports.associateBy({ it.title.get()}) { it.textReportFile.asFile.get() }
+    reports = allReports.associateBy({ it.title.get() }) { it.textReportFile.asFile.get() }
 }
 tasks.register<Zip>("allIncubationReportsZip") {
     destinationDir = file("$buildDir/reports/incubation")
