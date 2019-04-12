@@ -43,7 +43,7 @@ base.archivesBaseName = "gradle"
 //if(gradle.param)
 //throw IllegalStateException()
 if (gradle.startParameter.taskNames.any { it.contains("quickTest") }) {
-    throw IllegalStateException()
+    throw IllegalStateException("Oops!")
 }
 
 buildTypes {
