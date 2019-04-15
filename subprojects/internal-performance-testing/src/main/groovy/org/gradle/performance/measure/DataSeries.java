@@ -30,6 +30,8 @@ import java.util.stream.Collectors;
  * A collection of measurements of some given units.
  */
 public class DataSeries<Q> extends ArrayList<Amount<Q>> {
+    private static final BigDecimal MILLISECOND_PRECISION = BigDecimal.valueOf(5);
+
     private final Amount<Q> average;
     private final Amount<Q> median;
     private final Amount<Q> max;
@@ -74,8 +76,7 @@ public class DataSeries<Q> extends ArrayList<Amount<Q>> {
         BigDecimal sumSquares = BigDecimal.ZERO;
         Units<Q> baseUnits = average.getUnits().getBaseUnits();
         BigDecimal averageValue = average.toUnits(baseUnits).getValue();
-        for (int i = 0; i < size(); i++) {
-            Amount<Q> amount = get(i);
+        for (Amount<Q> amount : this) {
             BigDecimal diff = amount.toUnits(baseUnits).getValue();
             diff = diff.subtract(averageValue);
             diff = diff.multiply(diff);
@@ -116,6 +117,15 @@ public class DataSeries<Q> extends ArrayList<Amount<Q>> {
     }
 
     private double[] asDoubleArray() {
-        return stream().map(Amount::getValue).mapToDouble(BigDecimal::doubleValue).toArray();
+        return stream()
+            .map(Amount::getValue)
+            .map(DataSeries::roundToPrecision)
+            .mapToDouble(BigDecimal::doubleValue)
+            .toArray();
+    }
+
+    private static BigDecimal roundToPrecision(BigDecimal value) {
+        BigDecimal divided = value.divide(MILLISECOND_PRECISION, 0, RoundingMode.HALF_UP);
+        return divided.multiply(MILLISECOND_PRECISION);
     }
 }

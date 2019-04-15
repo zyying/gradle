@@ -58,4 +58,12 @@ class DataSeriesTest extends Specification {
         series.max == null
         series.standardError == null
     }
+
+    def "two nearly equal series are considered equal"() {
+        def baseline = new DataSeries([9, 8, 9, 10].collect { Duration.millis(it) })
+        def current = new DataSeries([10, 9, 8, 9].collect { Duration.millis(it) })
+
+        expect:
+        DataSeries.confidenceInDifference(baseline, current) == 0
+    }
 }
