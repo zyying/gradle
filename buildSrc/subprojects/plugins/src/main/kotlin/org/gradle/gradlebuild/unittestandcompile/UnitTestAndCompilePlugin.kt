@@ -125,7 +125,6 @@ class UnitTestAndCompilePlugin : Plugin<Project> {
                 configureCompileTask(this, options, availableJavaInstallations)
             }
         }
-        addCompileAllTask()
     }
 
     private
@@ -171,16 +170,6 @@ class UnitTestAndCompilePlugin : Plugin<Project> {
             testCompile(testLibrary("spock"))
             testRuntime(testLibrary("bytebuddy"))
             testRuntime(library("objenesis"))
-        }
-    }
-
-    private
-    fun Project.addCompileAllTask() {
-        tasks.register("compileAll") {
-            val compileTasks = project.tasks.matching {
-                it is JavaCompile || it is GroovyCompile
-            }
-            dependsOn(compileTasks)
         }
     }
 
