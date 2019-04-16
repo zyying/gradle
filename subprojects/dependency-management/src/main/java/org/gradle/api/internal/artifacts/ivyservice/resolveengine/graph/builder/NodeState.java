@@ -185,6 +185,7 @@ public class NodeState implements DependencyGraphNode {
      * @param discoveredEdges A collector for visited edges.
      */
     public void visitOutgoingDependencies(Collection<EdgeState> discoveredEdges) {
+        resolveState.log("Visiting outgoing dependencies of " + this);
         // If this configuration's version is in conflict, do not traverse.
         // If none of the incoming edges are transitive, remove previous state and do not traverse.
         // If not traversed before, simply add all selected outgoing edges (either hard or pending edges)
@@ -193,6 +194,7 @@ public class NodeState implements DependencyGraphNode {
         //      If net exclusions for this node not changed, remove previous state and traverse outgoing edges again.
 
         if (!component.isSelected()) {
+            resolveState.log("Version for " + this + " is not selected. ignoring.");
             LOGGER.debug("version for {} is not selected. ignoring.", this);
             return;
         }
@@ -208,15 +210,18 @@ public class NodeState implements DependencyGraphNode {
 
         // Determine the net exclusion for this node, by inspecting all transitive incoming edges
         ModuleExclusion resolutionFilter = getModuleResolutionFilter(incomingEdges);
-
+        resolveState.log("Exclusion filter for " + this + " = " + resolutionFilter);
         // Virtual platforms require their constraints to be recomputed each time as each module addition can cause a shift in versions
         if (!isVirtualPlatformNeedsRefresh()) {
             // Check if node was previously traversed with the same net exclusion when not a virtual platform
             if (previousTraversalExclusions != null && previousTraversalExclusions.excludesSameModulesAs(resolutionFilter)) {
+                resolveState.log("Previously visited " + this);
                 if (hasNewConstraints()) {
+                    resolveState.log("There are new constraints for " + this);
                     // Previously traversed but new constraints no longer pending, so partial traversing
                     visitAdditionalConstraints(discoveredEdges);
                 } else {
+                    resolveState.log("Nothing changed for " + this + ", ignoring traversal");
                     // Was previously traversed, and no change to the set of modules that are linked by outgoing edges.
                     // Don't need to traverse again, but hang on to the new filter since it may change the set of excluded artifacts.
                     LOGGER.debug("Changed edges for {} selects same versions as previous traversal. ignoring", this);
@@ -269,14 +274,19 @@ public class NodeState implements DependencyGraphNode {
     private void visitDependencies(ModuleExclusion resolutionFilter, Collection<EdgeState> discoveredEdges) {
         PendingDependenciesVisitor pendingDepsVisitor = resolveState.newPendingDependenciesVisitor();
         try {
-            for (DependencyMetadata dependency : metaData.getDependencies()) {
+            List<? extends DependencyMetadata> dependencies = metaData.getDependencies();
+            resolveState.log("Dependencies for " + this + ": " + dependencies);
+            for (DependencyMetadata dependency : dependencies) {
                 DependencyState dependencyState = new DependencyState(dependency, resolveState.getComponentSelectorConverter());
                 if (isExcluded(resolutionFilter, dependencyState)) {
+                    resolveState.log("Dependency " + dependency+ " for " + this + " has been excluded");
                     continue;
                 }
                 dependencyState = maybeSubstitute(dependencyState, resolveState.getDependencySubstitutionApplicator());
                 if (!pendingDepsVisitor.maybeAddAsPendingDependency(this, dependencyState)) {
                     createAndLinkEdgeState(dependencyState, discoveredEdges, resolutionFilter);
+                } else {
+                    resolveState.log("Dependency " + dependency+ " for " + this + " added as pending");
                 }
             }
             previousTraversalExclusions = resolutionFilter;
@@ -293,6 +303,7 @@ public class NodeState implements DependencyGraphNode {
         outgoingEdges.add(dependencyEdge);
         discoveredEdges.add(dependencyEdge);
         dependencyEdge.getSelector().use();
+        resolveState.log("Created new edge for " + this + ": " + dependencyEdge + ". Outgoing edges = " + outgoingEdges);
     }
 
     /**
@@ -303,6 +314,7 @@ public class NodeState implements DependencyGraphNode {
     private void visitAdditionalConstraints(Collection<EdgeState> discoveredEdges) {
         for (DependencyMetadata dependency : metaData.getDependencies()) {
             if (dependency.isConstraint()) {
+                resolveState.log("Visiting additional constraint from " + this + ": " + dependency);
                 DependencyState dependencyState = new DependencyState(dependency, resolveState.getComponentSelectorConverter());
                 if (upcomingNoLongerPendingConstraints.contains(dependencyState.getModuleIdentifier())) {
                     dependencyState = maybeSubstitute(dependencyState, resolveState.getDependencySubstitutionApplicator());
@@ -418,11 +430,13 @@ public class NodeState implements DependencyGraphNode {
     }
 
     public void addIncomingEdge(EdgeState dependencyEdge) {
+        resolveState.log("Adding incoming edge to " + this + ": " + dependencyEdge);
         incomingEdges.add(dependencyEdge);
         resolveState.onMoreSelected(this);
     }
 
     public void removeIncomingEdge(EdgeState dependencyEdge) {
+        resolveState.log("Removing incoming edge from " + this + ": " + dependencyEdge);
         incomingEdges.remove(dependencyEdge);
         resolveState.onFewerSelected(this);
     }
@@ -432,6 +446,7 @@ public class NodeState implements DependencyGraphNode {
     }
 
     public void evict() {
+        resolveState.log("Evicting " + this);
         evicted = true;
         restartIncomingEdges();
     }
@@ -483,6 +498,7 @@ public class NodeState implements DependencyGraphNode {
     }
 
     private void removeOutgoingEdges() {
+        resolveState.log("Removing outgoing edges for " + this + ". Before removal " + outgoingEdges);
         if (!outgoingEdges.isEmpty()) {
             for (EdgeState outgoingDependency : outgoingEdges) {
                 outgoingDependency.removeFromTargetConfigurations();
@@ -492,6 +508,7 @@ public class NodeState implements DependencyGraphNode {
         }
         outgoingEdges.clear();
         if (virtualEdges != null) {
+            resolveState.log("Removing virtual edges for " + this + ". Before removal " + virtualEdges);
             for (EdgeState outgoingDependency : virtualEdges) {
                 outgoingDependency.removeFromTargetConfigurations();
                 outgoingDependency.getSelector().release();
@@ -504,10 +521,12 @@ public class NodeState implements DependencyGraphNode {
     }
 
     public void restart(ComponentState selected) {
+        resolveState.log("Restarting " + this + " using selected component " + selected);
         // Restarting this configuration after conflict resolution.
         // If this configuration belongs to the select version, queue ourselves up for traversal.
         // If not, then remove our incoming edges, which triggers them to be moved across to the selected configuration
         if (component == selected) {
+            resolveState.log("Same component is selected: " + selected);
             if (!evicted) {
                 resolveState.onMoreSelected(this);
             }
@@ -519,6 +538,7 @@ public class NodeState implements DependencyGraphNode {
     }
 
     private void restartIncomingEdges() {
+        resolveState.log("Restarting incoming edges for " + this);
         if (incomingEdges.size() == 1) {
             EdgeState singleEdge = incomingEdges.get(0);
             singleEdge.restart();
@@ -527,6 +547,7 @@ public class NodeState implements DependencyGraphNode {
                 dependency.restart();
             }
         }
+        resolveState.log("Cleared incoming edges for " + this);
         incomingEdges.clear();
     }
 
@@ -558,6 +579,7 @@ public class NodeState implements DependencyGraphNode {
      * There may be some incoming edges left at that point, but they must all be coming from constraints.
      */
     public void clearConstraintEdges(PendingDependencies pendingDependencies, NodeState backToPendingSource) {
+        resolveState.log("Clearing constraint edges of " + this);
         for (EdgeState incomingEdge : incomingEdges) {
             assert incomingEdge.getDependencyMetadata().isConstraint();
             NodeState from = incomingEdge.getFrom();
@@ -565,6 +587,7 @@ public class NodeState implements DependencyGraphNode {
                 // Only remove edges that come from a different node than the source of the dependency going back to pending
                 // The edges from the "From" will be removed first
                 incomingEdge.getSelector().release();
+                resolveState.log("Removing " + incomingEdge + " from outgoing edges of " + from);
                 from.getOutgoingEdges().remove(incomingEdge);
             }
             pendingDependencies.addNode(from);

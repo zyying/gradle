@@ -25,6 +25,7 @@ import org.gradle.api.internal.artifacts.ivyservice.resolveengine.ComponentResol
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.ConflictResolverDetails;
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.ModuleConflictResolver;
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.graph.builder.ResolveOptimizations;
+import org.gradle.api.internal.artifacts.ivyservice.resolveengine.graph.builder.ResolveState;
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.graph.conflicts.DefaultConflictResolverDetails;
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.graph.conflicts.VersionConflictResolutionDetails;
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.result.ComponentSelectionDescriptorInternal;
@@ -46,16 +47,19 @@ public class SelectorStateResolver<T extends ComponentResolutionState> {
     private final T rootComponent;
     private final ModuleIdentifier rootModuleId;
     private final ResolveOptimizations resolveOptimizations;
+    private final ResolveState resolveState;
 
-    public SelectorStateResolver(ModuleConflictResolver conflictResolver, ComponentStateFactory<T> componentFactory, T rootComponent, ResolveOptimizations resolveOptimizations) {
+    public SelectorStateResolver(ModuleConflictResolver conflictResolver, ComponentStateFactory<T> componentFactory, T rootComponent, ResolveOptimizations resolveOptimizations, ResolveState resolveState) {
         this.conflictResolver = conflictResolver;
         this.componentFactory = componentFactory;
         this.rootComponent = rootComponent;
         this.rootModuleId = rootComponent.getId().getModule();
         this.resolveOptimizations = resolveOptimizations;
+        this.resolveState = resolveState;
     }
 
     public T selectBest(ModuleIdentifier moduleId, List<? extends ResolvableSelectorState> selectors) {
+        resolveState.log("Selecting best module version for " + moduleId + " using selectors " + selectors);
         VersionSelector allRejects = createAllRejects(selectors);
         List<T> candidates = resolveSelectors(selectors, allRejects);
         assert !candidates.isEmpty();
@@ -166,7 +170,7 @@ public class SelectorStateResolver<T extends ComponentResolutionState> {
             }
             preferResults.add(resolvedPreference);
         }
-
+        resolveState.log("Prefer constraint result:" + preferResults);
         return preferResults;
     }
 
@@ -216,6 +220,7 @@ public class SelectorStateResolver<T extends ComponentResolutionState> {
     }
 
     private T resolveConflicts(Collection<T> candidates) {
+        resolveState.log("Performing conflict resolution between "  + candidates);
         // Do conflict resolution to choose the best out of current selection and candidate.
         ConflictResolverDetails<T> details = new DefaultConflictResolverDetails<T>(candidates);
         conflictResolver.select(details);
@@ -226,6 +231,7 @@ public class SelectorStateResolver<T extends ComponentResolutionState> {
             ComponentSelectionDescriptorInternal desc = ComponentSelectionReasons.CONFLICT_RESOLUTION;
             selected.addCause(desc.withDescription(new VersionConflictResolutionDetails(candidates)));
         }
+        resolveState.log("Conflict resolution has selected " + selected);
         return selected;
     }
 

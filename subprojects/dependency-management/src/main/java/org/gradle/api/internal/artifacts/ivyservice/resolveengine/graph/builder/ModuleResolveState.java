@@ -70,6 +70,7 @@ class ModuleResolveState implements CandidateModule {
     private VirtualPlatformState platformState;
     private boolean overriddenSelection;
     private Set<VirtualPlatformState> platformOwners;
+    private final ResolveState resolveState;
 
     ModuleResolveState(IdGenerator<Long> idGenerator,
                        ModuleIdentifier id,
@@ -78,7 +79,7 @@ class ModuleResolveState implements CandidateModule {
                        Comparator<Version> versionComparator,
                        VersionParser versionParser,
                        SelectorStateResolver<ComponentState> selectorStateResolver,
-                       ResolveOptimizations resolveOptimizations) {
+                       ResolveOptimizations resolveOptimizations, ResolveState resolveState) {
         this.idGenerator = idGenerator;
         this.id = id;
         this.metaDataResolver = metaDataResolver;
@@ -88,6 +89,7 @@ class ModuleResolveState implements CandidateModule {
         this.resolveOptimizations = resolveOptimizations;
         this.pendingDependencies = new PendingDependencies(id);
         this.selectorStateResolver = selectorStateResolver;
+        this.resolveState = resolveState;
     }
 
     void setSelectorStateResolver(SelectorStateResolver<ComponentState> selectorStateResolver) {
@@ -165,8 +167,10 @@ class ModuleResolveState implements CandidateModule {
 
     private void selectComponentAndEvictOthers(ComponentState selected) {
         for (ComponentState version : versions.values()) {
+            resolveState.log("Evicting " + version);
             version.evict();
         }
+        resolveState.log("Selecting " + selected);
         selected.select();
     }
 
@@ -178,7 +182,7 @@ class ModuleResolveState implements CandidateModule {
         assert newSelection != null;
         assert this.selected != newSelection;
         assert newSelection.getModule() == this;
-
+        resolveState.log("Changing selection of " + this + " to " + newSelection);
         // Remove any outgoing edges for the current selection
         selected.removeOutgoingEdges();
 
@@ -193,6 +197,7 @@ class ModuleResolveState implements CandidateModule {
      * - Make all 'selected' component versions selectable.
      */
     public void clearSelection() {
+        resolveState.log("Clearing selection of " + this);
         if (selected != null) {
             selected.removeOutgoingEdges();
         }
@@ -209,6 +214,7 @@ class ModuleResolveState implements CandidateModule {
      * Overrides the component selection for this module, when this module has been replaced by another.
      */
     public void restart(ComponentState selected) {
+        resolveState.log("Restarting " + this + " using selected component " + selected);
         if (this.selected != null) {
             clearSelection();
         }
@@ -239,9 +245,11 @@ class ModuleResolveState implements CandidateModule {
 
     private void restartUnattachedDependencies() {
         if (unattachedDependencies.size() == 1) {
+            resolveState.log("Restarting unattached dependencies of " + this + ": " + unattachedDependencies);
             EdgeState singleDependency = unattachedDependencies.get(0);
             singleDependency.restart();
         } else {
+            resolveState.log("Restarting unattached dependencies of " + this + ": " + unattachedDependencies);
             for (EdgeState dependency : new ArrayList<EdgeState>(unattachedDependencies)) {
                 dependency.restart();
             }
@@ -268,6 +276,7 @@ class ModuleResolveState implements CandidateModule {
 
     void addSelector(SelectorState selector) {
         assert !selectors.contains(selector) : "Inconsistent call to addSelector: should only be done if the selector isn't in use";
+        resolveState.log("Adding selector " + selector + " to " + this);
         selectors.add(selector);
         mergedConstraintAttributes = appendAttributes(mergedConstraintAttributes, selector);
         if (overriddenSelection) {
@@ -277,6 +286,7 @@ class ModuleResolveState implements CandidateModule {
     }
 
     void removeSelector(SelectorState selector) {
+        resolveState.log("Removing selector " + selector + " from " + this);
         selectors.remove(selector);
         mergedConstraintAttributes = ImmutableAttributes.EMPTY;
         for (SelectorState selectorState : selectors) {
@@ -342,6 +352,7 @@ class ModuleResolveState implements CandidateModule {
     void decreaseHardEdgeCount(NodeState removalSource) {
         pendingDependencies.decreaseHardEdgeCount();
         if (pendingDependencies.isPending()) {
+            resolveState.log("Module " + this + " became pending");
             // Back to being a pending dependency
             // Clear remaining incoming edges, as they must be all from constraints
             if (selected != null) {

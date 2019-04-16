@@ -119,4 +119,9 @@ public class DefaultSelectedByVariantMatchingConfigurationMetadata implements Se
     public int hashCode() {
         return Objects.hashCode(delegate);
     }
+
+    @Override
+    public String toString() {
+        return delegate.toString();
+    }
 }

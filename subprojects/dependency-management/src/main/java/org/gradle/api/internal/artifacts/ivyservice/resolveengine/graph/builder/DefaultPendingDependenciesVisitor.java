@@ -49,6 +49,7 @@ class DefaultPendingDependenciesVisitor implements PendingDependenciesVisitor {
         }
 
         // No hard dependency, queue up pending dependency in case we see a hard dependency later.
+        resolveState.log("Pending node: " + node);
         module.addPendingNode(node);
         return true;
     }
@@ -71,7 +72,9 @@ class DefaultPendingDependenciesVisitor implements PendingDependenciesVisitor {
     @Override
     public void complete() {
         if (noLongerPending != null) {
+            resolveState.log("No longer pending: " + noLongerPending);
             for (PendingDependencies pendingDependencies : noLongerPending) {
+                resolveState.log("Module " + pendingDependencies.getModuleIdentifier() + " is no longer pending. Turning into hard dependencies");
                 pendingDependencies.turnIntoHardDependencies();
             }
             noLongerPending = null;

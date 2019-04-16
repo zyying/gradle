@@ -65,6 +65,10 @@ import org.gradle.internal.resolve.result.DefaultBuildableComponentResolveResult
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Writer;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -73,9 +77,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public class DependencyGraphBuilder {
+    private final static AtomicInteger RESOLUTION_COUNTER = new AtomicInteger();
+    private final static String LOG_PATH = System.getProperty("org.gradle.debug.dn.logdir", System.getProperty("java.io.tmpdir") + File.separator + "dmlogs");
+
     private static final Logger LOGGER = LoggerFactory.getLogger(DependencyGraphBuilder.class);
     private final ModuleConflictHandler moduleConflictHandler;
     private final Spec<? super DependencyMetadata> edgeFilter;
@@ -128,6 +136,10 @@ public class DependencyGraphBuilder {
         this.versionParser = versionParser;
     }
 
+    private static String prettify(String name) {
+        return name.replaceAll("[^a-zA-Z0-9]+", "_");
+    }
+
     public void resolve(final ResolveContext resolveContext, final DependencyGraphVisitor modelVisitor) {
 
         IdGenerator<Long> idGenerator = new LongIdGenerator();
@@ -135,15 +147,22 @@ public class DependencyGraphBuilder {
         moduleResolver.resolve(resolveContext, rootModule);
 
         int graphSize = estimateSize(resolveContext);
-        final ResolveState resolveState = new ResolveState(idGenerator, rootModule, resolveContext.getName(), idResolver, metaDataResolver, edgeFilter, attributesSchema, moduleExclusions, moduleReplacementsData, componentSelectorConverter, attributesFactory, dependencySubstitutionApplicator, versionSelectorScheme, versionComparator, versionParser, moduleConflictHandler.getResolver(), graphSize);
+        File logFile = new File(LOG_PATH + File.separator + prettify(resolveContext.getDisplayName()) + "_" + RESOLUTION_COUNTER.getAndIncrement());
+        logFile.getParentFile().mkdirs();
+        try (Writer logger = new FileWriter(logFile)) {
+            final ResolveState resolveState = new ResolveState(idGenerator, rootModule, resolveContext.getName(), idResolver, metaDataResolver, edgeFilter, attributesSchema, moduleExclusions, moduleReplacementsData, componentSelectorConverter, attributesFactory, dependencySubstitutionApplicator, versionSelectorScheme, versionComparator, versionParser, moduleConflictHandler.getResolver(), graphSize, logger);
 
-        Map<ModuleVersionIdentifier, ComponentIdentifier> componentIdentifierCache = Maps.newHashMapWithExpectedSize(graphSize/2);
-        traverseGraph(resolveState, componentIdentifierCache);
+            Map<ModuleVersionIdentifier, ComponentIdentifier> componentIdentifierCache = Maps.newHashMapWithExpectedSize(graphSize / 2);
+            traverseGraph(resolveState, componentIdentifierCache);
+            resolveState.log("Traversal of " + resolveContext.getDisplayName() + " complete, validating graph");
+            validateGraph(resolveState);
+            resolveState.log("Validation of " + resolveContext.getDisplayName() + " complete, assembling result");
 
-        validateGraph(resolveState);
-
-        assembleResult(resolveState, modelVisitor);
-
+            assembleResult(resolveState, modelVisitor);
+            resolveState.log("Dependency resolution of " + resolveContext.getDisplayName() + " done.");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -194,6 +213,7 @@ public class DependencyGraphBuilder {
         node.forEachCapability(new Action<Capability>() {
             @Override
             public void execute(Capability capability) {
+                resolveState.log("Processing capability " + capability + " of " + node);
                 // This is a performance optimization. Most modules do not declare capabilities. So, instead of systematically registering
                 // an implicit capability for each module that we see, we only consider modules which _declare_ capabilities. If they do,
                 // then we try to find a module which provides the same capability. It that module has been found, then we register it.
@@ -236,7 +256,9 @@ public class DependencyGraphBuilder {
         if (dependencies.isEmpty()) {
             return;
         }
+        resolveState.log("Resolving edges for " + node);
         performSelectionSerially(dependencies, resolveState);
+        resolveState.log("Downloading metadata for " + node);
         maybeDownloadMetadataInParallel(node, componentIdentifierCache, dependencies);
         attachToTargetRevisionsSerially(dependencies);
 
@@ -248,6 +270,7 @@ public class DependencyGraphBuilder {
             ModuleResolveState module = selector.getTargetModule();
 
             if (!selector.isResolved()) {
+                resolveState.log("Performing selection of " + module);
                 // Have an unprocessed/new selector for this module. Need to re-select the target version.
                 performSelection(resolveState, module);
             }

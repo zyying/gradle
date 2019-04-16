@@ -114,16 +114,20 @@ class EdgeState implements DependencyGraphEdge {
     }
 
     public void attachToTargetConfigurations() {
+        resolveState.log("Attaching to target configurations for " + this);
         ComponentState targetComponent = getTargetComponent();
         if (targetComponent == null) {
+            resolveState.log("No target component for " + this + ": Aborting");
             // The selector failed or the module has been deselected. Do not attach.
             return;
         }
 
         if (isConstraint) {
+            resolveState.log(this + " is a constraint: checking if target still has hard edges");
             // Need to double check that the target still has hard edges to it
             ModuleResolveState module = targetComponent.getModule();
             if (module.isPending()) {
+                resolveState.log(this + " is now pending, removing from outgoing edges of " + from);
                 selector.getTargetModule().removeUnattachedDependency(this);
                 from.getOutgoingEdges().remove(this);
                 module.addPendingNode(from);
@@ -141,6 +145,7 @@ class EdgeState implements DependencyGraphEdge {
     }
 
     public void removeFromTargetConfigurations() {
+        resolveState.log("Removing from target configurations for " + this + ": " + targetNodes);
         if (!targetNodes.isEmpty()) {
             for (NodeState targetConfiguration : targetNodes) {
                 targetConfiguration.removeIncomingEdge(this);
@@ -161,6 +166,7 @@ class EdgeState implements DependencyGraphEdge {
     }
 
     public void restart() {
+        resolveState.log("Restarting " + this + " (isSelected = )" + from.isSelected());
         if (from.isSelected()) {
             removeFromTargetConfigurations();
             attachToTargetConfigurations();
@@ -179,6 +185,7 @@ class EdgeState implements DependencyGraphEdge {
     }
 
     private void calculateTargetConfigurations(ComponentState targetComponent) {
+        resolveState.log("Calculating target configurations for " + targetComponent);
         ComponentResolveMetadata targetModuleVersion = targetComponent.getMetadata();
         targetNodes.clear();
         targetNodeSelectionFailure = null;
@@ -194,6 +201,7 @@ class EdgeState implements DependencyGraphEdge {
                     targetNodes.add(node);
                 }
             }
+            resolveState.log(this + " is a constraint. Copying previous target nodes:" + targetNodes);
             return;
         }
 
@@ -202,6 +210,7 @@ class EdgeState implements DependencyGraphEdge {
             ImmutableAttributes attributes = resolveState.getRoot().getMetadata().getAttributes();
             attributes = resolveState.getAttributesFactory().concat(attributes, safeGetAttributes());
             targetConfigurations = dependencyMetadata.selectConfigurations(attributes, targetModuleVersion, resolveState.getAttributesSchema(), dependencyState.getRequested().getRequestedCapabilities());
+            resolveState.log("Selected configurations " + targetConfigurations + " for " + this);
         } catch (AttributeMergingException mergeError) {
             targetNodeSelectionFailure = new ModuleVersionResolveException(dependencyState.getRequested(), () -> {
                 Attribute<?> attribute = mergeError.getAttribute();
@@ -217,6 +226,7 @@ class EdgeState implements DependencyGraphEdge {
         }
         for (ConfigurationMetadata targetConfiguration : targetConfigurations) {
             NodeState targetNodeState = resolveState.getNode(targetComponent, targetConfiguration);
+            resolveState.log("Adding " + targetNodeState + " to target nodes of " + this);
             this.targetNodes.add(targetNodeState);
         }
     }

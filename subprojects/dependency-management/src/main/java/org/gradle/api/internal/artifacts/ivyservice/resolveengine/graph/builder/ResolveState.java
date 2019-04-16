@@ -42,6 +42,8 @@ import org.gradle.internal.resolve.resolver.ComponentMetaDataResolver;
 import org.gradle.internal.resolve.resolver.DependencyToComponentIdResolver;
 import org.gradle.internal.resolve.result.ComponentResolveResult;
 
+import java.io.IOException;
+import java.io.Writer;
 import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Comparator;
@@ -52,7 +54,7 @@ import java.util.Map;
 /**
  * Global resolution state.
  */
-class ResolveState implements ComponentStateFactory<ComponentState> {
+public class ResolveState implements ComponentStateFactory<ComponentState> {
     private final Spec<? super DependencyMetadata> edgeFilter;
     private final Map<ModuleIdentifier, ModuleResolveState> modules;
     private final Map<ResolvedConfigurationIdentifier, NodeState> nodes;
@@ -75,6 +77,8 @@ class ResolveState implements ComponentStateFactory<ComponentState> {
     private final VersionParser versionParser;
     private final SelectorStateResolver<ComponentState> selectorStateResolver;
     private final ResolveOptimizations resolveOptimizations;
+    private final Writer logger;
+    private int logId;
 
     public ResolveState(IdGenerator<Long> idGenerator, ComponentResolveResult rootResult, String rootConfigurationName, DependencyToComponentIdResolver idResolver,
                         ComponentMetaDataResolver metaDataResolver, Spec<? super DependencyMetadata> edgeFilter, AttributesSchemaInternal attributesSchema,
@@ -82,7 +86,7 @@ class ResolveState implements ComponentStateFactory<ComponentState> {
                         ComponentSelectorConverter componentSelectorConverter, ImmutableAttributesFactory attributesFactory,
                         DependencySubstitutionApplicator dependencySubstitutionApplicator, VersionSelectorScheme versionSelectorScheme,
                         Comparator<Version> versionComparator, VersionParser versionParser, ModuleConflictResolver conflictResolver,
-                        int graphSize) {
+                        int graphSize, Writer logger) {
         this.idGenerator = idGenerator;
         this.idResolver = idResolver;
         this.metaDataResolver = metaDataResolver;
@@ -100,6 +104,7 @@ class ResolveState implements ComponentStateFactory<ComponentState> {
         this.nodes = new LinkedHashMap<ResolvedConfigurationIdentifier, NodeState>(3*graphSize/2);
         this.selectors = new LinkedHashMap<ComponentSelector, SelectorState>(5*graphSize/2);
         this.queue = new ArrayDeque<NodeState>(graphSize);
+        this.logger = logger;
         this.resolveOptimizations = new ResolveOptimizations();
         ComponentState rootVersion = getRevision(rootResult.getId(), rootResult.getModuleVersionId(), rootResult.getMetadata());
         final ResolvedConfigurationIdentifier id = new ResolvedConfigurationIdentifier(rootVersion.getId(), rootConfigurationName);
@@ -108,7 +113,7 @@ class ResolveState implements ComponentStateFactory<ComponentState> {
         nodes.put(root.getResolvedConfigurationId(), root);
         root.getComponent().getModule().select(root.getComponent());
         this.replaceSelectionWithConflictResultAction = new ReplaceSelectionWithConflictResultAction(this);
-        selectorStateResolver = new SelectorStateResolver<ComponentState>(conflictResolver, this, rootVersion, resolveOptimizations);
+        selectorStateResolver = new SelectorStateResolver<ComponentState>(conflictResolver, this, rootVersion, resolveOptimizations, this);
         getModule(rootResult.getModuleVersionId().getModule()).setSelectorStateResolver(selectorStateResolver);
     }
 
@@ -124,10 +129,19 @@ class ResolveState implements ComponentStateFactory<ComponentState> {
         return root;
     }
 
+    public synchronized ResolveState log(String message) {
+        try {
+            logger.write(logId++ + "  - " + message + "\n");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return this;
+    }
+
     public ModuleResolveState getModule(ModuleIdentifier id) {
         ModuleResolveState module = modules.get(id);
         if (module == null) {
-            module = new ModuleResolveState(idGenerator, id, metaDataResolver, attributesFactory, versionComparator, versionParser, selectorStateResolver, resolveOptimizations);
+            module = new ModuleResolveState(idGenerator, id, metaDataResolver, attributesFactory, versionComparator, versionParser, selectorStateResolver, resolveOptimizations, this);
             modules.put(id, module);
         }
         return module;
@@ -183,6 +197,7 @@ class ResolveState implements ComponentStateFactory<ComponentState> {
 
     public NodeState pop() {
         NodeState next = queue.removeFirst();
+        log("Popping " + next);
         return next.dequeue();
     }
 
@@ -193,6 +208,7 @@ class ResolveState implements ComponentStateFactory<ComponentState> {
         // Add to the end of the queue, so that we traverse the graph in breadth-wise order to pick up as many conflicts as
         // possible before attempting to resolve them
         if (node.enqueue()) {
+            log("onMoreSelected " + node);
             queue.addLast(node);
         }
     }
@@ -203,6 +219,7 @@ class ResolveState implements ComponentStateFactory<ComponentState> {
     public void onFewerSelected(NodeState node) {
         // Add to the front of the queue, to flush out configurations that are no longer required.
         if (node.enqueue()) {
+            log("onFewerSelected " + node);
             queue.addFirst(node);
         }
     }

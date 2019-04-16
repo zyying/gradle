@@ -51,6 +51,8 @@ import org.gradle.api.specs.Specs
 import org.gradle.internal.component.external.descriptor.DefaultExclude
 import org.gradle.internal.component.external.model.DefaultModuleComponentIdentifier
 import org.gradle.internal.component.external.model.ImmutableCapabilities
+import org.gradle.internal.component.external.model.maven.DefaultMavenModuleResolveMetadata
+import org.gradle.internal.component.external.model.maven.DefaultMutableMavenModuleResolveMetadata
 import org.gradle.internal.component.local.model.DefaultLocalComponentMetadata
 import org.gradle.internal.component.local.model.DslOriginDependencyMetadataWrapper
 import org.gradle.internal.component.local.model.RootLocalComponentMetadata
@@ -71,12 +73,14 @@ import org.gradle.internal.resolve.resolver.ResolveContextToComponentResolver
 import org.gradle.internal.resolve.result.BuildableComponentIdResolveResult
 import org.gradle.internal.resolve.result.BuildableComponentResolveResult
 import org.gradle.util.AttributeTestUtil
+import spock.lang.Ignore
 import spock.lang.Specification
 
 import static org.gradle.api.internal.artifacts.DefaultModuleVersionIdentifier.newId
 import static org.gradle.internal.component.external.model.DefaultModuleComponentSelector.newSelector
 import static org.gradle.internal.component.local.model.TestComponentIdentifiers.newProjectId
 
+@Ignore
 class DependencyGraphBuilderTest extends Specification {
     def configuration = Mock(ConfigurationInternal)
     def conflictResolver = Mock(ModuleConflictResolver)
@@ -1016,6 +1020,13 @@ class DependencyGraphBuilderTest extends Specification {
         result.components == ids(root, forced, b)
     }
 
+    def "constraints should not mess up with ordering"() {
+        given:
+        def v1 = revision("a", "1")
+        def v2 = revision("a", "")
+        def c = revision("a", "2")
+    }
+
     def revision(String name, String revision = '1.0') {
         // TODO Shouldn't really be using the local component implementation here
         def id = newId("group", name, revision)
@@ -1023,6 +1034,16 @@ class DependencyGraphBuilderTest extends Specification {
         metaData.addConfiguration("default", "defaultConfig", [] as Set<String>, ImmutableSet.of("default"), true, true, attributes, true, true, ImmutableCapabilities.EMPTY)
         metaData.addArtifacts("default", [new DefaultPublishArtifact("art1", "zip", "art", null, new Date(), new File("art1.zip"))])
         return metaData
+    }
+
+    ComponentResolveMetadata constraint(String name, String revision = '1.0') {
+        def id = newId("group", name, revision)
+        return new DefaultMavenModuleResolveMetadata(
+            new DefaultMutableMavenModuleResolveMetadata(
+                id,
+                DefaultModuleComponentIdentifier.newId(id)
+            )
+        )
     }
 
     def rootProject(String name, String revision = '1.0', List<String> extraConfigs = []) {
