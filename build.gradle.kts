@@ -396,4 +396,8 @@ allprojects {
         dirMode = Integer.parseInt("0755", 8)
         fileMode = Integer.parseInt("0644", 8)
     }
+    // don't care about tests for this branch
+    tasks.withType<Test>().configureEach {
+        enabled = false
+    }
 }

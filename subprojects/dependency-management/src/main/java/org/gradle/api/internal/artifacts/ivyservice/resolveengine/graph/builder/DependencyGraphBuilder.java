@@ -82,7 +82,6 @@ import java.util.stream.Collectors;
 
 public class DependencyGraphBuilder {
     private final static AtomicInteger RESOLUTION_COUNTER = new AtomicInteger();
-    private final static String LOG_PATH = System.getProperty("org.gradle.debug.dn.logdir", System.getProperty("java.io.tmpdir") + File.separator + "dmlogs");
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DependencyGraphBuilder.class);
     private final ModuleConflictHandler moduleConflictHandler;
@@ -140,6 +139,10 @@ public class DependencyGraphBuilder {
         return name.replaceAll("[^a-zA-Z0-9]+", "_");
     }
 
+    private static String findLogPath() {
+        return System.getProperty("org.gradle.debug.dn.logdir", System.getProperty("java.io.tmpdir") + File.separator + "dmlogs");
+    }
+
     public void resolve(final ResolveContext resolveContext, final DependencyGraphVisitor modelVisitor) {
 
         IdGenerator<Long> idGenerator = new LongIdGenerator();
@@ -147,7 +150,7 @@ public class DependencyGraphBuilder {
         moduleResolver.resolve(resolveContext, rootModule);
 
         int graphSize = estimateSize(resolveContext);
-        File logFile = new File(LOG_PATH + File.separator + prettify(resolveContext.getDisplayName()) + "_" + RESOLUTION_COUNTER.getAndIncrement());
+        File logFile = new File(findLogPath() + File.separator + prettify(resolveContext.getDisplayName()) + "_" + RESOLUTION_COUNTER.getAndIncrement());
         logFile.getParentFile().mkdirs();
         try (Writer logger = new FileWriter(logFile)) {
             final ResolveState resolveState = new ResolveState(idGenerator, rootModule, resolveContext.getName(), idResolver, metaDataResolver, edgeFilter, attributesSchema, moduleExclusions, moduleReplacementsData, componentSelectorConverter, attributesFactory, dependencySubstitutionApplicator, versionSelectorScheme, versionComparator, versionParser, moduleConflictHandler.getResolver(), graphSize, logger);
