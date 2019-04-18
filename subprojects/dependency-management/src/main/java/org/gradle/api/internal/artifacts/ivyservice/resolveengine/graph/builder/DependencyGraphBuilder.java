@@ -153,6 +153,7 @@ public class DependencyGraphBuilder {
         File logFile = new File(findLogPath() + File.separator + prettify(resolveContext.getDisplayName()) + "_" + RESOLUTION_COUNTER.getAndIncrement());
         logFile.getParentFile().mkdirs();
         try (Writer logger = new FileWriter(logFile)) {
+            moduleExclusions.invalidate();
             final ResolveState resolveState = new ResolveState(idGenerator, rootModule, resolveContext.getName(), idResolver, metaDataResolver, edgeFilter, attributesSchema, moduleExclusions, moduleReplacementsData, componentSelectorConverter, attributesFactory, dependencySubstitutionApplicator, versionSelectorScheme, versionComparator, versionParser, moduleConflictHandler.getResolver(), graphSize, logger);
 
             Map<ModuleVersionIdentifier, ComponentIdentifier> componentIdentifierCache = Maps.newHashMapWithExpectedSize(graphSize / 2);

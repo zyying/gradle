@@ -71,6 +71,16 @@ public class ModuleExclusions {
         this.moduleIdentifierFactory = moduleIdentifierFactory;
     }
 
+    public synchronized void invalidate() {
+        mergeCache.clear();
+        excludeAnyCache.clear();
+        intersectionCache.clear();
+        mergeOperationCache.clear();
+        moduleIdSpecs.clear();
+        moduleNameSpecs.clear();
+        groupNameSpecs.clear();
+    }
+
     /**
      * Returns a spec that excludes nothing.
      */
