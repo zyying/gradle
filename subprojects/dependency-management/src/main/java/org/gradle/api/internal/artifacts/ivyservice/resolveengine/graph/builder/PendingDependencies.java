@@ -65,4 +65,9 @@ public class PendingDependencies {
         assert hardEdges > 0 : "Cannot remove a hard edge when none recorded";
         hardEdges--;
     }
+
+    @Override
+    public String toString() {
+        return "Pending dependencies for " + moduleIdentifier + " affecting " + affectedComponents + ". Hard edges count = " + hardEdges;
+    }
 }

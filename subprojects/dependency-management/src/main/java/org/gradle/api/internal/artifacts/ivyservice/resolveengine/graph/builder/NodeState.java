@@ -214,8 +214,10 @@ public class NodeState implements DependencyGraphNode {
         // Virtual platforms require their constraints to be recomputed each time as each module addition can cause a shift in versions
         if (!isVirtualPlatformNeedsRefresh()) {
             // Check if node was previously traversed with the same net exclusion when not a virtual platform
+            if (previousTraversalExclusions != null) {
+                resolveState.log("Previously visited " + this + " with exclusion filter " + previousTraversalExclusions);
+            }
             if (previousTraversalExclusions != null && previousTraversalExclusions.excludesSameModulesAs(resolutionFilter)) {
-                resolveState.log("Previously visited " + this);
                 if (hasNewConstraints()) {
                     resolveState.log("There are new constraints for " + this);
                     // Previously traversed but new constraints no longer pending, so partial traversing
