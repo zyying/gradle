@@ -80,10 +80,11 @@ public class ModuleExclusions implements Closeable {
 
     public ModuleExclusions(ImmutableModuleIdentifierFactory moduleIdentifierFactory) {
         this.moduleIdentifierFactory = moduleIdentifierFactory;
-        PrintWriter logger = null;
+        PrintWriter logger;
         try {
             logger = new PrintWriter(new FileWriter(new File(findLogPath() + File.separator + "module-excludes.log")));
         } catch (IOException e) {
+            logger = null;
         }
         this.logger = logger;
     }
