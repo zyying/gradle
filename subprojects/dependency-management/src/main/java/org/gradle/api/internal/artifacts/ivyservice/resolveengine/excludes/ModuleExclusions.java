@@ -26,6 +26,11 @@ import org.gradle.api.internal.artifacts.ivyservice.resolveengine.graph.builder.
 import org.gradle.internal.component.model.ExcludeMetadata;
 import org.gradle.internal.component.model.IvyArtifactName;
 
+import java.io.Closeable;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -51,7 +56,11 @@ import static org.gradle.api.internal.artifacts.ivyservice.resolveengine.exclude
  * is depended on via a transitive path, then the resulting exclusion is the _intersection_ of the exclusions on each leg of the path (module is excluded if excluded by _any_).</li> <li>When a module
  * is depended on via multiple paths in the graph, then the resulting exclusion is the _union_ of the exclusions on each of those paths (module is excluded if excluded by _all_).</li> </ul>
  */
-public class ModuleExclusions {
+public class ModuleExclusions implements Closeable {
+    private static String findLogPath() {
+        return System.getProperty("org.gradle.debug.dn.logdir", System.getProperty("java.io.tmpdir") + File.separator + "dmlogs");
+    }
+
     private static final ExcludeNone EXCLUDE_NONE = new ExcludeNone();
     private static final ExcludeAllModulesSpec EXCLUDE_ALL_MODULES_SPEC = new ExcludeAllModulesSpec();
 
@@ -64,11 +73,19 @@ public class ModuleExclusions {
     private final Map<ModuleIdentifier, ModuleIdExcludeSpec> moduleIdSpecs = Maps.newConcurrentMap();
     private final Map<String, ModuleNameExcludeSpec> moduleNameSpecs = Maps.newConcurrentMap();
     private final Map<String, GroupNameExcludeSpec> groupNameSpecs = Maps.newConcurrentMap();
+    private final PrintWriter logger;
+    private int logId;
 
     private final Object mergeOperationLock = new Object();
 
     public ModuleExclusions(ImmutableModuleIdentifierFactory moduleIdentifierFactory) {
         this.moduleIdentifierFactory = moduleIdentifierFactory;
+        PrintWriter logger = null;
+        try {
+            logger = new PrintWriter(new FileWriter(new File(findLogPath() + File.separator + "module-excludes.log")));
+        } catch (IOException e) {
+        }
+        this.logger = logger;
     }
 
     public synchronized void invalidate() {
@@ -107,6 +124,8 @@ public class ModuleExclusions {
         }
         AbstractModuleExclusion exclusion = excludeAnyCache.get(excludes);
         if (exclusion != null) {
+            String x = "Found excludeAny in cache for " + excludes + ": " + exclusion;
+            log(x);
             return exclusion;
         }
         ImmutableSet.Builder<AbstractModuleExclusion> exclusions = ImmutableSet.builder();
@@ -115,7 +134,20 @@ public class ModuleExclusions {
         }
         exclusion = asIntersection(exclusions.build());
         excludeAnyCache.put(excludes, exclusion);
+        log("Caching excludeAny for " + excludes + ": " + exclusion);
         return exclusion;
+    }
+
+    private synchronized void log(String x) {
+        logger.println(logId++ + " - " + x);
+    }
+
+    public void resolutionStart(String id) {
+        log("#### New resolution starting:" + id + " ####");
+    }
+
+    public void resolutionComplete(String id) {
+        log("#### Resolution finished:" + id + " ####");
     }
 
     private AbstractModuleExclusion forExclude(ExcludeMetadata rule) {
@@ -176,6 +208,12 @@ public class ModuleExclusions {
      * Returns a spec that excludes those modules and artifacts that are excluded by _either_ of the given exclude rules.
      */
     public ModuleExclusion intersect(ModuleExclusion one, ModuleExclusion two) {
+        ModuleExclusion intersect = doIntersect(one, two);
+        log("Intersection of " + one + " and " + two + " = " + intersect);
+        return intersect;
+    }
+
+    private ModuleExclusion doIntersect(ModuleExclusion one, ModuleExclusion two) {
         if (one == two) {
             return one;
         }
@@ -217,6 +255,12 @@ public class ModuleExclusions {
      * Returns a spec that excludes only those modules and artifacts that are excluded by _both_ of the supplied exclude rules.
      */
     public ModuleExclusion union(ModuleExclusion one, ModuleExclusion two) {
+        ModuleExclusion union = doUnion(one, two);
+        log("Union of " + one + " and " + two + " = " + union);
+        return union;
+    }
+
+    private ModuleExclusion doUnion(ModuleExclusion one, ModuleExclusion two) {
         if (one == two) {
             return one;
         }
@@ -280,11 +324,17 @@ public class ModuleExclusions {
             }
 
             MergeOperation merge = mergeOperation(oneFilters, otherFilters);
+            log("Merge key: " + merge);
             AbstractModuleExclusion exclusion = mergeCache.get(merge);
             if (exclusion != null) {
+                log("Found union of " + one + " and " + other + " in cache: " + exclusion);
                 return exclusion;
             }
-            return mergeAndCacheResult(merge, oneFilters, otherFilters);
+            try {
+                return mergeAndCacheResult(merge, oneFilters, otherFilters);
+            } finally {
+                log("Caching union of " + one + " and " + other);
+            }
         }
         return null;
     }
@@ -299,10 +349,12 @@ public class ModuleExclusions {
             }
             MergeOperation mergeOperation = oneMap.get(two);
             if (mergeOperation != null) {
+                log("Found merge operation in cache for one: " + Arrays.asList(one) + ", two: " + Arrays.asList(two) + ": " + mergeOperation);
                 return mergeOperation;
             }
             mergeOperation = new MergeOperation(one, two);
             oneMap.put(two, mergeOperation);
+            log("Caching merge operation for one: " + Arrays.asList(one) + ", two: " + Arrays.asList(two) + ": " + mergeOperation);
             return mergeOperation;
         }
     }
@@ -325,6 +377,7 @@ public class ModuleExclusions {
         if (merged.isEmpty()) {
             exclusion = ModuleExclusions.EXCLUDE_NONE;
         } else {
+            log("MergeSet for merge operation " + merge + " = " + merged);
             exclusion = asIntersection(ImmutableSet.copyOf(merged));
         }
         mergeCache.put(merge, exclusion);
@@ -335,7 +388,10 @@ public class ModuleExclusions {
         IntersectionExclusion cached = intersectionCache.get(excludes);
         if (cached == null) {
             cached = new IntersectionExclusion(new ImmutableModuleExclusionSet(excludes));
+            log("Caching asIntersection in cache for " + excludes + ": " + cached);
             intersectionCache.put(excludes, cached);
+        } else {
+            log("Found asIntersection in cache for " + excludes + ": " + cached);
         }
         return cached;
     }
@@ -421,6 +477,11 @@ public class ModuleExclusions {
         } else {
             throw new UnsupportedOperationException(String.format("Cannot calculate intersection of exclude rules: %s, %s", spec1, spec2));
         }
+    }
+
+    @Override
+    public void close() throws IOException {
+        logger.close();
     }
 
     private static final class MergeOperation {

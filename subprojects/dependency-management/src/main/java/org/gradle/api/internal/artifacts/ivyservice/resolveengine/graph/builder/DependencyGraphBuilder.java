@@ -150,10 +150,12 @@ public class DependencyGraphBuilder {
         moduleResolver.resolve(resolveContext, rootModule);
 
         int graphSize = estimateSize(resolveContext);
-        File logFile = new File(findLogPath() + File.separator + prettify(resolveContext.getDisplayName()) + "_" + RESOLUTION_COUNTER.getAndIncrement());
+        String resolutionId = prettify(resolveContext.getDisplayName());
+        File logFile = new File(findLogPath() + File.separator + resolutionId + "_" + RESOLUTION_COUNTER.getAndIncrement());
         logFile.getParentFile().mkdirs();
         try (Writer logger = new FileWriter(logFile)) {
-            moduleExclusions.invalidate();
+//            moduleExclusions.invalidate();
+            moduleExclusions.resolutionStart(resolutionId);
             final ResolveState resolveState = new ResolveState(idGenerator, rootModule, resolveContext.getName(), idResolver, metaDataResolver, edgeFilter, attributesSchema, moduleExclusions, moduleReplacementsData, componentSelectorConverter, attributesFactory, dependencySubstitutionApplicator, versionSelectorScheme, versionComparator, versionParser, moduleConflictHandler.getResolver(), graphSize, logger);
 
             Map<ModuleVersionIdentifier, ComponentIdentifier> componentIdentifierCache = Maps.newHashMapWithExpectedSize(graphSize / 2);
@@ -166,6 +168,8 @@ public class DependencyGraphBuilder {
             resolveState.log("Dependency resolution of " + resolveContext.getDisplayName() + " done.");
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            moduleExclusions.resolutionComplete(resolutionId);
         }
     }
 
