@@ -31,6 +31,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -82,9 +83,11 @@ public class ModuleExclusions implements Closeable {
         this.moduleIdentifierFactory = moduleIdentifierFactory;
         PrintWriter logger;
         try {
-            logger = new PrintWriter(new FileWriter(new File(findLogPath() + File.separator + "module-excludes.log")));
+            File logFile = new File(findLogPath() + File.separator + "module-excludes.log");
+            logFile.getParentFile().mkdirs();
+            logger = new PrintWriter(new FileWriter(logFile));
         } catch (IOException e) {
-            logger = null;
+            logger = new PrintWriter(new StringWriter());
         }
         this.logger = logger;
     }
