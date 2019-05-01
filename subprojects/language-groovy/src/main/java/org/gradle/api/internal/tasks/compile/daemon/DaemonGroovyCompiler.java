@@ -19,9 +19,19 @@ package org.gradle.api.internal.tasks.compile.daemon;
 import com.google.common.collect.Iterables;
 import org.gradle.api.internal.ClassPathRegistry;
 import org.gradle.api.internal.tasks.compile.BaseForkOptionsConverter;
+import org.gradle.api.internal.tasks.compile.CommandLineJavaCompileSpec;
+import org.gradle.api.internal.tasks.compile.CommandLineJavaCompiler;
+import org.gradle.api.internal.tasks.compile.CompilationFailedException;
+import org.gradle.api.internal.tasks.compile.DefaultJavaCompileSpec;
+import org.gradle.api.internal.tasks.compile.ForkingJavaCompileSpec;
 import org.gradle.api.internal.tasks.compile.GroovyJavaJointCompileSpec;
-import org.gradle.api.logging.LogLevel;
-import org.gradle.api.logging.Logger;
+import org.gradle.api.internal.tasks.compile.JavaCompileSpec;
+import org.gradle.api.internal.tasks.compile.JavaHomeBasedJavaCompilerFactory;
+import org.gradle.api.internal.tasks.compile.JdkJavaCompiler;
+import org.gradle.api.internal.tasks.compile.JvmLanguageCompileSpec;
+import org.gradle.api.internal.tasks.compile.MinimalJavaCompileOptions;
+import org.gradle.api.internal.tasks.compile.incremental.processing.IncrementalAnnotationProcessorType;
+import org.gradle.api.internal.tasks.compile.processing.AnnotationProcessorDeclaration;
 import org.gradle.api.tasks.compile.ForkOptions;
 import org.gradle.api.tasks.compile.GroovyForkOptions;
 import org.gradle.internal.classloader.FilteringClassLoader;
@@ -68,11 +78,11 @@ public class DaemonGroovyCompiler extends AbstractDaemonCompiler<GroovyJavaJoint
         Iterable<File> classpath = Iterables.concat(spec.getGroovyClasspath(), antFiles);
         VisitableURLClassLoader.Spec targetGroovyClasspath = new VisitableURLClassLoader.Spec("worker-loader", DefaultClassPath.of(classpath).getAsURLs());
 
-        // TODO We should infer a minimal classpath from delegate instead
-        Collection<File> languageGroovyFiles = classPathRegistry.getClassPath("LANGUAGE-GROOVY").getAsFiles();
+        Collection<File> languageGroovyFiles = classPathRegistry.getClassPath("GROOVY-COMPILER").getAsFiles();
         VisitableURLClassLoader.Spec compilerClasspath = new VisitableURLClassLoader.Spec("compiler-loader", DefaultClassPath.of(languageGroovyFiles).getAsURLs());
 
         FilteringClassLoader.Spec gradleAndUserFilter = getMinimalGradleFilter();
+
         for (String sharedPackage : SHARED_PACKAGES) {
             gradleAndUserFilter.allowPackage(sharedPackage);
         }
@@ -91,31 +101,48 @@ public class DaemonGroovyCompiler extends AbstractDaemonCompiler<GroovyJavaJoint
 
         return new DaemonForkOptionsBuilder(forkOptionsFactory)
             .javaForkOptions(javaForkOptions)
-            .classpath(classpath)
-            .sharedPackages(SHARED_PACKAGES)
             .keepAliveMode(KeepAliveMode.SESSION)
             .withClassLoaderStrucuture(classLoaderStructure)
             .build();
     }
 
     private static FilteringClassLoader.Spec getMinimalGradleFilter() {
-        // Allow just the basics instead of the entire Gradle API
+        // Allow only certain things from the underlying classloader
         FilteringClassLoader.Spec gradleFilterSpec = new FilteringClassLoader.Spec();
+
         // Logging
         gradleFilterSpec.allowPackage("org.slf4j");
-        gradleFilterSpec.allowClass(Logger.class);
-        gradleFilterSpec.allowClass(LogLevel.class);
-        // Native
-        gradleFilterSpec.allowPackage("org.gradle.internal.nativeintegration");
-        gradleFilterSpec.allowPackage("org.gradle.internal.nativeplatform");
+
+        // Native Services
         gradleFilterSpec.allowPackage("net.rubygrapefruit.platform");
-        // Service Registry
-        gradleFilterSpec.allowPackage("org.gradle.internal.service");
-        // Instantiation
-        gradleFilterSpec.allowPackage("org.gradle.internal.instantiation");
-        gradleFilterSpec.allowPackage("org.gradle.internal.reflect");
+
         // Inject
         gradleFilterSpec.allowPackage("javax.inject");
+
+        // Gradle stuff
+        gradleFilterSpec.allowPackage("org.gradle");
+
+        // Guava
+        gradleFilterSpec.allowPackage("com.google");
+
+        // Classes in "org.gradle.api.internal.tasks.compile" should come from the
+        // compiler classpath except for the ones listed
+        // TODO Move the Groovy compiler classes to their own package so we can just disallow that instead
+        gradleFilterSpec.disallowPackage("org.gradle.api.internal.tasks.compile");
+        gradleFilterSpec.allowClass(JavaCompileSpec.class);
+        gradleFilterSpec.allowClass(DefaultJavaCompileSpec.class);
+        gradleFilterSpec.allowClass(JvmLanguageCompileSpec.class);
+        gradleFilterSpec.allowClass(CommandLineJavaCompileSpec.class);
+        gradleFilterSpec.allowClass(CommandLineJavaCompiler.class);
+        gradleFilterSpec.allowClass(JdkJavaCompiler.class);
+        gradleFilterSpec.allowClass(JavaHomeBasedJavaCompilerFactory.class);
+        gradleFilterSpec.allowClass(CompilationFailedException.class);
+        gradleFilterSpec.allowClass(MinimalJavaCompileOptions.class);
+        gradleFilterSpec.allowClass(ForkingJavaCompileSpec.class);
+        gradleFilterSpec.allowClass(AbstractDaemonCompiler.class);
+        gradleFilterSpec.allowClass(AbstractDaemonCompiler.CompilerCallable.class);
+        gradleFilterSpec.allowClass(AnnotationProcessorDeclaration.class);
+        gradleFilterSpec.allowClass(IncrementalAnnotationProcessorType.class);
 
         return gradleFilterSpec;
     }

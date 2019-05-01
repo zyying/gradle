@@ -32,8 +32,22 @@ public class DefaultClassPathProvider implements ClassPathProvider {
         if (name.equals("GRADLE_INSTALLATION_BEACON")) {
             return moduleRegistry.getModule("gradle-installation-beacon").getImplementationClasspath();
         }
-        if (name.equals("LANGUAGE-GROOVY")) {
-            return moduleRegistry.getModule("gradle-language-groovy").getAllRequiredModulesClasspath();
+        if (name.equals("GROOVY-COMPILER")) {
+            ClassPath classpath = ClassPath.EMPTY;
+            classpath = classpath.plus(moduleRegistry.getModule("gradle-language-groovy").getImplementationClasspath());
+            classpath = classpath.plus(moduleRegistry.getExternalModule("groovy-all").getClasspath());
+            classpath = classpath.plus(moduleRegistry.getExternalModule("asm").getClasspath());
+            return classpath;
+        }
+        if (name.equals("SCALA-COMPILER")) {
+            ClassPath classpath = ClassPath.EMPTY;
+            classpath = classpath.plus(moduleRegistry.getModule("gradle-language-scala").getImplementationClasspath());
+            return classpath;
+        }
+        if (name.equals("PLAY-COMPILER")) {
+            ClassPath classpath = ClassPath.EMPTY;
+            classpath = classpath.plus(moduleRegistry.getModule("gradle-platform-play").getImplementationClasspath());
+            return classpath;
         }
         if (name.equals("ANT")) {
             ClassPath classpath = ClassPath.EMPTY;

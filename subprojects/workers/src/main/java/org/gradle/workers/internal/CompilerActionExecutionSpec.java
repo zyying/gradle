@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,16 @@
 
 package org.gradle.workers.internal;
 
-import org.gradle.api.Describable;
+public class CompilerActionExecutionSpec extends SimpleActionExecutionSpec implements IsolatedClassloaderActionExecutionSpec {
+    private final ClassLoaderStructure classLoaderStructure;
 
-import java.io.Serializable;
-
-public interface ActionExecutionSpec extends Serializable, Describable {
-    Class<?> getImplementationClass();
+    public CompilerActionExecutionSpec(Class<?> implementationClass, String displayName, Object[] params, ClassLoaderStructure classLoaderStructure) {
+        super(implementationClass, displayName, params);
+        this.classLoaderStructure = classLoaderStructure;
+    }
 
     @Override
-    String getDisplayName();
-
-    Object[] getParams();
+    public ClassLoaderStructure getClassLoaderStructure() {
+        return classLoaderStructure;
+    }
 }
