@@ -27,6 +27,8 @@ import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.TaskContainer;
+import org.gradle.api.tasks.TaskProvider;
 import org.gradle.language.cpp.CppComponent;
 import org.gradle.language.cpp.CppPlatform;
 import org.gradle.language.cpp.internal.DefaultCppBinary;
@@ -49,24 +51,29 @@ public class DefaultCppTestExecutable extends DefaultCppBinary implements CppTes
     private final RegularFileProperty executableFile;
     private final Property<Task> executableFileProducer;
     private final DirectoryProperty installationDirectory;
-    private final Property<InstallExecutable> installTaskProperty;
-    private final Property<LinkExecutable> linkTaskProperty;
-    private final Property<RunTestExecutable> runTask;
+    private final TaskProvider<InstallExecutable> installTask;
+    private final TaskProvider<LinkExecutable> linkTask;
+    private final TaskProvider<RunTestExecutable> runTask;
     private final ConfigurableFileCollection outputs;
     private final RegularFileProperty debuggerExecutableFile;
 
     @Inject
-    public DefaultCppTestExecutable(Names names, Provider<String> baseName, FileCollection sourceFiles, FileCollection componentHeaderDirs, Configuration implementation, Provider<CppComponent> testedComponent, CppPlatform targetPlatform, NativeToolChainInternal toolChain, PlatformToolProvider platformToolProvider, NativeVariantIdentity identity, ConfigurationContainer configurations, ObjectFactory objects) {
-        super(names, objects, baseName, sourceFiles, componentHeaderDirs, configurations, implementation, targetPlatform, toolChain, platformToolProvider, identity);
+    public DefaultCppTestExecutable(Names names, ObjectFactory objects, Provider<String> baseName,
+                                    FileCollection sourceFiles, FileCollection componentHeaderDirs,
+                                    TaskContainer tasks, ConfigurationContainer configurations, Configuration implementation,
+                                    Provider<CppComponent> testedComponent,
+                                    CppPlatform targetPlatform, NativeToolChainInternal toolChain, PlatformToolProvider platformToolProvider,
+                                    NativeVariantIdentity identity) {
+        super(names, objects, baseName, sourceFiles, componentHeaderDirs, tasks, configurations, implementation, targetPlatform, toolChain, platformToolProvider, identity);
         this.testedComponent = testedComponent;
         this.executableFile = objects.fileProperty();
         this.executableFileProducer = objects.property(Task.class);
         this.debuggerExecutableFile = objects.fileProperty();
         this.installationDirectory = objects.directoryProperty();
-        this.linkTaskProperty = objects.property(LinkExecutable.class);
-        this.installTaskProperty = objects.property(InstallExecutable.class);
+        this.linkTask = tasks.register(names.getTaskName("link"), LinkExecutable.class);
+        this.installTask = tasks.register(names.getTaskName("install"), InstallExecutable.class);
         this.outputs = objects.fileCollection();
-        this.runTask = objects.property(RunTestExecutable.class);
+        this.runTask = tasks.register(names.getTaskName("run"), RunTestExecutable.class);
     }
 
     @Override
@@ -95,17 +102,17 @@ public class DefaultCppTestExecutable extends DefaultCppBinary implements CppTes
     }
 
     @Override
-    public Property<InstallExecutable> getInstallTask() {
-        return installTaskProperty;
+    public TaskProvider<InstallExecutable> getInstallTask() {
+        return installTask;
     }
 
     @Override
-    public Property<LinkExecutable> getLinkTask() {
-        return linkTaskProperty;
+    public TaskProvider<LinkExecutable> getLinkTask() {
+        return linkTask;
     }
 
     @Override
-    public Property<RunTestExecutable> getRunTask() {
+    public TaskProvider<RunTestExecutable> getRunTask() {
         return runTask;
     }
 

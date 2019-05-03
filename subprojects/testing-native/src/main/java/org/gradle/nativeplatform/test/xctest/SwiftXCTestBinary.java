@@ -20,6 +20,7 @@ import org.gradle.api.Incubating;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.TaskProvider;
 import org.gradle.language.swift.SwiftBinary;
 import org.gradle.nativeplatform.tasks.AbstractLinkTask;
 import org.gradle.nativeplatform.test.TestComponent;
@@ -56,10 +57,15 @@ public interface SwiftXCTestBinary extends SwiftBinary, TestComponent {
     /**
      * Returns the link task for this binary.
      *
-     * @since 4.5
+     * @since 5.5
      */
-    Provider<? extends AbstractLinkTask> getLinkTask();
+    TaskProvider<? extends AbstractLinkTask> getLinkTask();
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 5.5
+     */
     @Override
-    Provider<? extends XCTest> getRunTask();
+    TaskProvider<? extends XCTest> getRunTask();
 }

@@ -20,8 +20,9 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ConfigurationContainer;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.model.ObjectFactory;
-import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.TaskContainer;
+import org.gradle.api.tasks.TaskProvider;
 import org.gradle.language.cpp.internal.NativeVariantIdentity;
 import org.gradle.language.nativeplatform.internal.Names;
 import org.gradle.language.swift.SwiftPlatform;
@@ -33,16 +34,16 @@ import org.gradle.nativeplatform.toolchain.internal.PlatformToolProvider;
 import javax.inject.Inject;
 
 public class DefaultSwiftXCTestBundle extends DefaultSwiftXCTestBinary implements SwiftXCTestBundle {
-    private final Property<LinkMachOBundle> linkTask;
+    private final TaskProvider<LinkMachOBundle> linkTask;
 
     @Inject
-    public DefaultSwiftXCTestBundle(Names names, ObjectFactory objectFactory, Provider<String> module, boolean testable, FileCollection source, ConfigurationContainer configurations, Configuration implementation, SwiftPlatform targetPlatform, NativeToolChainInternal toolChain, PlatformToolProvider platformToolProvider, NativeVariantIdentity identity) {
-        super(names, objectFactory, module, testable, source, configurations, implementation, targetPlatform, toolChain, platformToolProvider, identity);
-        linkTask = objectFactory.property(LinkMachOBundle.class);
+    public DefaultSwiftXCTestBundle(Names names, ObjectFactory objectFactory, Provider<String> module, boolean testable, FileCollection source, TaskContainer tasks, ConfigurationContainer configurations, Configuration implementation, SwiftPlatform targetPlatform, NativeToolChainInternal toolChain, PlatformToolProvider platformToolProvider, NativeVariantIdentity identity) {
+        super(names, objectFactory, module, testable, source, tasks, configurations, implementation, targetPlatform, toolChain, platformToolProvider, identity);
+        this.linkTask = tasks.register(names.getTaskName("link"), LinkMachOBundle.class);
     }
 
     @Override
-    public Property<LinkMachOBundle> getLinkTask() {
+    public TaskProvider<LinkMachOBundle> getLinkTask() {
         return linkTask;
     }
 }

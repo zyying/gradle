@@ -21,6 +21,7 @@ import org.gradle.api.Task;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.TaskProvider;
 import org.gradle.nativeplatform.tasks.LinkExecutable;
 
 /**
@@ -49,6 +50,8 @@ public interface ComponentWithExecutable extends ComponentWithNativeRuntime {
 
     /**
      * Returns the link task for the executable.
+     *
+     * @since 5.5
      */
-    Provider<? extends LinkExecutable> getLinkTask();
+    TaskProvider<? extends LinkExecutable> getLinkTask();
 }

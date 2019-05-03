@@ -31,6 +31,8 @@ import org.gradle.api.internal.provider.Providers;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.TaskContainer;
+import org.gradle.api.tasks.TaskProvider;
 import org.gradle.language.cpp.internal.DefaultUsageContext;
 import org.gradle.language.cpp.internal.NativeVariantIdentity;
 import org.gradle.language.nativeplatform.internal.ConfigurableComponentWithLinkUsage;
@@ -51,17 +53,17 @@ import java.util.Set;
 public class DefaultSwiftStaticLibrary extends DefaultSwiftBinary implements SwiftStaticLibrary, ConfigurableComponentWithStaticLibrary, ConfigurableComponentWithLinkUsage, ConfigurableComponentWithRuntimeUsage, SoftwareComponentInternal {
     private final RegularFileProperty linkFile;
     private final Property<Task> linkFileProducer;
-    private final Property<CreateStaticLibrary> createTaskProperty;
+    private final TaskProvider<CreateStaticLibrary> createTask;
     private final Property<Configuration> linkElements;
     private final Property<Configuration> runtimeElements;
     private final ConfigurableFileCollection outputs;
 
     @Inject
-    public DefaultSwiftStaticLibrary(Names names, ObjectFactory objectFactory, Provider<String> module, boolean testable, FileCollection source, ConfigurationContainer configurations, Configuration implementation, SwiftPlatform targetPlatform, NativeToolChainInternal toolChain, PlatformToolProvider platformToolProvider, NativeVariantIdentity identity) {
-        super(names, objectFactory, module, testable, source, configurations, implementation, targetPlatform, toolChain, platformToolProvider, identity);
+    public DefaultSwiftStaticLibrary(Names names, ObjectFactory objectFactory, Provider<String> module, boolean testable, FileCollection source, TaskContainer tasks, ConfigurationContainer configurations, Configuration implementation, SwiftPlatform targetPlatform, NativeToolChainInternal toolChain, PlatformToolProvider platformToolProvider, NativeVariantIdentity identity) {
+        super(names, objectFactory, module, testable, source, tasks, configurations, implementation, targetPlatform, toolChain, platformToolProvider, identity);
         this.linkFile = objectFactory.fileProperty();
         this.linkFileProducer = objectFactory.property(Task.class);
-        this.createTaskProperty = objectFactory.property(CreateStaticLibrary.class);
+        this.createTask = tasks.register(names.getTaskName("create"), CreateStaticLibrary.class);
         this.linkElements = objectFactory.property(Configuration.class);
         this.runtimeElements = objectFactory.property(Configuration.class);
         this.outputs = objectFactory.fileCollection();
@@ -83,8 +85,8 @@ public class DefaultSwiftStaticLibrary extends DefaultSwiftBinary implements Swi
     }
 
     @Override
-    public Property<CreateStaticLibrary> getCreateTask() {
-        return createTaskProperty;
+    public TaskProvider<CreateStaticLibrary> getCreateTask() {
+        return createTask;
     }
 
     @Override

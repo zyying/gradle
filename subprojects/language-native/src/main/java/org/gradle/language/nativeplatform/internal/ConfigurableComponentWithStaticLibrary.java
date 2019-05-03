@@ -24,7 +24,6 @@ import org.gradle.language.ComponentWithOutputs;
 import org.gradle.language.nativeplatform.ComponentWithObjectFiles;
 import org.gradle.language.nativeplatform.ComponentWithStaticLibrary;
 import org.gradle.nativeplatform.platform.NativePlatform;
-import org.gradle.nativeplatform.tasks.CreateStaticLibrary;
 import org.gradle.nativeplatform.toolchain.internal.PlatformToolProvider;
 
 /**
@@ -40,9 +39,6 @@ public interface ConfigurableComponentWithStaticLibrary extends ComponentWithSta
 
     @Override
     Property<Task> getLinkFileProducer();
-
-    @Override
-    Property<CreateStaticLibrary> getCreateTask();
 
     @Override
     ConfigurableFileCollection getOutputs();

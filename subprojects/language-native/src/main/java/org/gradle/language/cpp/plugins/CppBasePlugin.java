@@ -25,13 +25,10 @@ import org.gradle.api.internal.FeaturePreviews;
 import org.gradle.api.internal.GradleInternal;
 import org.gradle.api.internal.artifacts.ivyservice.projectmodule.ProjectPublicationRegistry;
 import org.gradle.api.internal.project.ProjectInternal;
-import org.gradle.api.tasks.TaskContainer;
-import org.gradle.api.tasks.TaskProvider;
 import org.gradle.language.cpp.CppSharedLibrary;
 import org.gradle.language.cpp.ProductionCppComponent;
 import org.gradle.language.cpp.internal.DefaultCppBinary;
 import org.gradle.language.cpp.internal.DefaultCppComponent;
-import org.gradle.language.cpp.tasks.CppCompile;
 import org.gradle.language.nativeplatform.internal.Names;
 import org.gradle.language.plugins.NativeBasePlugin;
 import org.gradle.nativeplatform.toolchain.internal.ToolType;
@@ -66,7 +63,6 @@ public class CppBasePlugin implements Plugin<Project> {
         project.getPluginManager().apply(NativeBasePlugin.class);
         project.getPluginManager().apply(StandardToolChainsPlugin.class);
 
-        final TaskContainer tasks = project.getTasks();
         final DirectoryProperty buildDirectory = project.getLayout().getBuildDirectory();
 
         // Enable the use of Gradle metadata. This is a temporary opt-in switch until available by default
@@ -75,9 +71,8 @@ public class CppBasePlugin implements Plugin<Project> {
         // Create the tasks for each C++ binary that is registered
         project.getComponents().withType(DefaultCppBinary.class, binary -> {
             final Names names = binary.getNames();
-            String language = "cpp";
-            
-            TaskProvider<CppCompile> compile = tasks.register(names.getCompileTaskName(language), CppCompile.class, task -> {
+
+            binary.getCompileTask().configure(task -> {
                 final Callable<List<File>> systemIncludes = () -> binary.getPlatformToolProvider().getSystemLibraries(ToolType.CPP_COMPILER).getIncludeDirs();
 
                 task.includes(binary.getCompileIncludePath());
@@ -98,8 +93,7 @@ public class CppBasePlugin implements Plugin<Project> {
                 }
             });
 
-            binary.getObjectsDir().set(compile.flatMap(task -> task.getObjectFileDir()));
-            binary.getCompileTask().set(compile);
+            binary.getObjectsDir().set(binary.getCompileTask().flatMap(task -> task.getObjectFileDir()));
         });
 
         project.getComponents().withType(ProductionCppComponent.class, component -> {

@@ -18,9 +18,9 @@ package org.gradle.language.cpp;
 
 import org.gradle.api.Incubating;
 import org.gradle.api.attributes.Attribute;
-import org.gradle.api.file.FileCollection;
-import org.gradle.api.provider.Provider;
 import org.gradle.api.component.BuildableComponent;
+import org.gradle.api.file.FileCollection;
+import org.gradle.api.tasks.TaskProvider;
 import org.gradle.language.ComponentWithDependencies;
 import org.gradle.language.cpp.tasks.CppCompile;
 import org.gradle.language.nativeplatform.ComponentWithObjectFiles;
@@ -82,7 +82,7 @@ public interface CppBinary extends ComponentWithObjectFiles, ComponentWithDepend
     /**
      * Returns the compile task for this binary.
      *
-     * @since 4.5
+     * @since 5.5
      */
-    Provider<CppCompile> getCompileTask();
+    TaskProvider<CppCompile> getCompileTask();
 }

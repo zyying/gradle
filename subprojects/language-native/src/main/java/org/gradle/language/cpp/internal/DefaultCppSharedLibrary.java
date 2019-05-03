@@ -30,6 +30,8 @@ import org.gradle.api.internal.component.UsageContext;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.TaskContainer;
+import org.gradle.api.tasks.TaskProvider;
 import org.gradle.language.cpp.CppPlatform;
 import org.gradle.language.cpp.CppSharedLibrary;
 import org.gradle.language.nativeplatform.internal.ConfigurableComponentWithLinkUsage;
@@ -49,18 +51,23 @@ public class DefaultCppSharedLibrary extends DefaultCppBinary implements CppShar
     private final RegularFileProperty linkFile;
     private final Property<Task> linkFileProducer;
     private final RegularFileProperty runtimeFile;
-    private final Property<LinkSharedLibrary> linkTaskProperty;
+    private final TaskProvider<LinkSharedLibrary> linkTask;
     private final Property<Configuration> linkElements;
     private final Property<Configuration> runtimeElements;
     private final ConfigurableFileCollection outputs;
 
     @Inject
-    public DefaultCppSharedLibrary(Names names, ObjectFactory objectFactory, Provider<String> baseName, FileCollection sourceFiles, FileCollection componentHeaderDirs, ConfigurationContainer configurations, Configuration implementation, CppPlatform targetPlatform, NativeToolChainInternal toolChain, PlatformToolProvider platformToolProvider, NativeVariantIdentity identity) {
-        super(names, objectFactory, baseName, sourceFiles, componentHeaderDirs, configurations, implementation, targetPlatform, toolChain, platformToolProvider, identity);
+    public DefaultCppSharedLibrary(Names names, ObjectFactory objectFactory, Provider<String> baseName,
+                                   FileCollection sourceFiles, FileCollection componentHeaderDirs,
+                                   TaskContainer tasks,
+                                   ConfigurationContainer configurations, Configuration implementation,
+                                   CppPlatform targetPlatform, NativeToolChainInternal toolChain, PlatformToolProvider platformToolProvider,
+                                   NativeVariantIdentity identity) {
+        super(names, objectFactory, baseName, sourceFiles, componentHeaderDirs, tasks, configurations, implementation, targetPlatform, toolChain, platformToolProvider, identity);
         this.linkFile = objectFactory.fileProperty();
         this.linkFileProducer = objectFactory.property(Task.class);
         this.runtimeFile = objectFactory.fileProperty();
-        this.linkTaskProperty = objectFactory.property(LinkSharedLibrary.class);
+        this.linkTask = tasks.register(names.getTaskName("link"), LinkSharedLibrary.class);
         this.linkElements = objectFactory.property(Configuration.class);
         this.runtimeElements = objectFactory.property(Configuration.class);
         this.outputs = objectFactory.fileCollection();
@@ -87,8 +94,8 @@ public class DefaultCppSharedLibrary extends DefaultCppBinary implements CppShar
     }
 
     @Override
-    public Property<LinkSharedLibrary> getLinkTask() {
-        return linkTaskProperty;
+    public TaskProvider<LinkSharedLibrary> getLinkTask() {
+        return linkTask;
     }
 
     @Override

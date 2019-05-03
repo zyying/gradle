@@ -43,7 +43,6 @@ import org.gradle.language.swift.SwiftPlatform;
 import org.gradle.language.swift.internal.DefaultSwiftBinary;
 import org.gradle.language.swift.internal.DefaultSwiftPlatform;
 import org.gradle.language.swift.plugins.SwiftBasePlugin;
-import org.gradle.language.swift.tasks.SwiftCompile;
 import org.gradle.language.swift.tasks.UnexportMainSymbol;
 import org.gradle.model.internal.registry.ModelRegistry;
 import org.gradle.nativeplatform.TargetMachine;
@@ -59,7 +58,6 @@ import org.gradle.nativeplatform.test.xctest.internal.DefaultSwiftXCTestBundle;
 import org.gradle.nativeplatform.test.xctest.internal.DefaultSwiftXCTestExecutable;
 import org.gradle.nativeplatform.test.xctest.internal.DefaultSwiftXCTestSuite;
 import org.gradle.nativeplatform.test.xctest.tasks.InstallXCTestBundle;
-import org.gradle.nativeplatform.test.xctest.tasks.XCTest;
 import org.gradle.nativeplatform.toolchain.NativeToolChain;
 import org.gradle.nativeplatform.toolchain.internal.NativeToolChainInternal;
 import org.gradle.nativeplatform.toolchain.internal.NativeToolChainRegistryInternal;
@@ -141,14 +139,13 @@ public class XCTestConventionPlugin implements Plugin<Project> {
 
         testComponent.getBinaries().whenElementKnown(DefaultSwiftXCTestBinary.class, binary -> {
             // Create test suite test task
-            TaskProvider<XCTest> testingTask = project.getTasks().register("xcTest", XCTest.class, task -> {
+            binary.getRunTask().configure(task -> {
                 task.setGroup(LifecycleBasePlugin.VERIFICATION_GROUP);
                 task.setDescription("Executes XCTest suites");
                 task.getTestInstallDirectory().set(binary.getInstallDirectory());
                 task.getRunScriptFile().set(binary.getRunScriptFile());
                 task.getWorkingDirectory().set(binary.getInstallDirectory());
             });
-            binary.getRunTask().set(testingTask);
 
             configureTestSuiteBuildingTasks(project, binary);
             configureTestSuiteWithTestedComponentWhenAvailable(project, testComponent, binary);
@@ -191,16 +188,16 @@ public class XCTestConventionPlugin implements Plugin<Project> {
             final NativeToolChain toolChain = modelRegistry.realize("toolChains", NativeToolChainRegistryInternal.class).getForPlatform(currentPlatform);
 
             // Platform specific arguments
-            // TODO: Need to lazily configure compile task
             // TODO: Ultimately, this should be some kind of 3rd party dependency that's visible to dependency management.
-            SwiftCompile compile = binary.getCompileTask().get();
-            compile.getCompilerArgs().addAll(project.provider(() -> {
-                File frameworkDir = new File(sdkPlatformPathLocator.find(), "Developer/Library/Frameworks");
-                return Arrays.asList("-parse-as-library", "-F" + frameworkDir.getAbsolutePath());
-            }));
+            binary.getCompileTask().configure(compile -> {
+                compile.getCompilerArgs().addAll(project.provider(() -> {
+                    File frameworkDir = new File(sdkPlatformPathLocator.find(), "Developer/Library/Frameworks");
+                    return Arrays.asList("-parse-as-library", "-F" + frameworkDir.getAbsolutePath());
+                }));
+            });
 
-            // Add a link task
-            final TaskProvider<LinkMachOBundle> link = tasks.register(names.getTaskName("link"), LinkMachOBundle.class, task -> {
+            final TaskProvider<? extends LinkMachOBundle> link = ((SwiftXCTestBundle)binary).getLinkTask();
+            link.configure(task -> {
                 task.getLinkerArgs().set(project.provider(() -> {
                     File frameworkDir = new File(sdkPlatformPathLocator.find(), "Developer/Library/Frameworks");
                     return Lists.newArrayList("-F" + frameworkDir.getAbsolutePath(), "-framework", "XCTest", "-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks", "-Xlinker", "-rpath", "-Xlinker", "@loader_path/../Frameworks");
@@ -218,6 +215,7 @@ public class XCTestConventionPlugin implements Plugin<Project> {
             });
 
 
+            // Should this be part of SwiftXCTestBundle too?
             final TaskProvider<InstallXCTestBundle> install = tasks.register(names.getTaskName("install"), InstallXCTestBundle.class, task -> {
                 task.getBundleBinaryFile().set(link.get().getLinkedFile());
                 task.getInstallDirectory().set(project.getLayout().getBuildDirectory().dir("install/" + names.getDirName()));
@@ -226,7 +224,6 @@ public class XCTestConventionPlugin implements Plugin<Project> {
             binary.getExecutableFile().set(link.flatMap(task -> task.getLinkedFile()));
 
             DefaultSwiftXCTestBundle bundle = (DefaultSwiftXCTestBundle) binary;
-            bundle.getLinkTask().set(link);
             bundle.getRunScriptFile().set(install.flatMap(task -> task.getRunScriptFile()));
         } else {
             DefaultSwiftXCTestExecutable executable = (DefaultSwiftXCTestExecutable) binary;

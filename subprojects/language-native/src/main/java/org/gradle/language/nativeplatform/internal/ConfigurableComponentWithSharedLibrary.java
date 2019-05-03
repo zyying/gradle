@@ -24,7 +24,6 @@ import org.gradle.language.ComponentWithOutputs;
 import org.gradle.language.nativeplatform.ComponentWithObjectFiles;
 import org.gradle.language.nativeplatform.ComponentWithSharedLibrary;
 import org.gradle.nativeplatform.platform.NativePlatform;
-import org.gradle.nativeplatform.tasks.LinkSharedLibrary;
 import org.gradle.nativeplatform.toolchain.internal.PlatformToolProvider;
 
 /**
@@ -40,9 +39,6 @@ public interface ConfigurableComponentWithSharedLibrary extends ComponentWithSha
 
     @Override
     Property<RegularFile> getRuntimeFile();
-
-    @Override
-    Property<LinkSharedLibrary> getLinkTask();
 
     @Override
     Property<Task> getLinkFileProducer();

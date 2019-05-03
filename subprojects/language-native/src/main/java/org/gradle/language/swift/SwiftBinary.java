@@ -20,6 +20,7 @@ import org.gradle.api.Incubating;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.TaskProvider;
 import org.gradle.language.ComponentWithDependencies;
 import org.gradle.language.nativeplatform.ComponentWithObjectFiles;
 import org.gradle.language.swift.tasks.SwiftCompile;
@@ -68,9 +69,9 @@ public interface SwiftBinary extends ComponentWithObjectFiles, ComponentWithDepe
     /**
      * Returns the compile task for this binary.
      *
-     * @since 4.5
+     * @since 5.5
      */
-    Provider<SwiftCompile> getCompileTask();
+    TaskProvider<SwiftCompile> getCompileTask();
 
     /**
      * Returns the module file for this binary.

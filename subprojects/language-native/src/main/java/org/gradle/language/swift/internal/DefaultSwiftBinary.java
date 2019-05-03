@@ -32,9 +32,10 @@ import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.internal.file.collections.FileCollectionAdapter;
 import org.gradle.api.internal.file.collections.MinimalFileSet;
 import org.gradle.api.model.ObjectFactory;
-import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.TaskDependency;
+import org.gradle.api.tasks.TaskProvider;
 import org.gradle.language.cpp.internal.NativeDependencyCache;
 import org.gradle.language.cpp.internal.NativeVariantIdentity;
 import org.gradle.language.internal.DefaultNativeBinary;
@@ -67,19 +68,25 @@ public class DefaultSwiftBinary extends DefaultNativeBinary implements SwiftBina
     private final Configuration linkLibs;
     private final Configuration runtimeLibs;
     private final RegularFileProperty moduleFile;
-    private final Property<SwiftCompile> compileTaskProperty;
+    private final TaskProvider<SwiftCompile> compileTask;
     private final SwiftPlatform targetPlatform;
     private final NativeToolChainInternal toolChain;
     private final PlatformToolProvider platformToolProvider;
     private final Configuration importPathConfiguration;
 
-    public DefaultSwiftBinary(Names names, final ObjectFactory objectFactory, Provider<String> module, boolean testable, FileCollection source, ConfigurationContainer configurations, Configuration componentImplementation, SwiftPlatform targetPlatform, NativeToolChainInternal toolChain, PlatformToolProvider platformToolProvider, NativeVariantIdentity identity) {
+    public DefaultSwiftBinary(Names names, final ObjectFactory objectFactory, Provider<String> module,
+                              boolean testable,
+                              FileCollection source,
+                              TaskContainer tasks,
+                              ConfigurationContainer configurations, Configuration componentImplementation,
+                              SwiftPlatform targetPlatform, NativeToolChainInternal toolChain, PlatformToolProvider platformToolProvider,
+                              NativeVariantIdentity identity) {
         super(names, objectFactory, componentImplementation);
         this.module = module;
         this.testable = testable;
         this.source = source;
         this.moduleFile = objectFactory.fileProperty();
-        this.compileTaskProperty = objectFactory.property(SwiftCompile.class);
+        this.compileTask = tasks.register(names.getCompileTaskName("swift"), SwiftCompile.class);
         this.targetPlatform = targetPlatform;
         this.toolChain = toolChain;
         this.platformToolProvider = platformToolProvider;
@@ -176,8 +183,8 @@ public class DefaultSwiftBinary extends DefaultNativeBinary implements SwiftBina
     }
 
     @Override
-    public Property<SwiftCompile> getCompileTask() {
-        return compileTaskProperty;
+    public TaskProvider<SwiftCompile> getCompileTask() {
+        return compileTask;
     }
 
     @Override

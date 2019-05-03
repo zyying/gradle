@@ -70,7 +70,8 @@ public class SwiftBasePlugin implements Plugin<Project> {
 
         project.getComponents().withType(DefaultSwiftBinary.class, binary -> {
             final Names names = binary.getNames();
-            TaskProvider<SwiftCompile> compile = tasks.register(names.getCompileTaskName("swift"), SwiftCompile.class, task -> {
+            final TaskProvider<SwiftCompile> compile = binary.getCompileTask();
+            compile.configure(task -> {
                 task.getModules().from(binary.getCompileModules());
                 task.getSource().from(binary.getSwiftSource());
                 task.getDebuggable().set(binary.isDebuggable());
@@ -98,7 +99,6 @@ public class SwiftBasePlugin implements Plugin<Project> {
             });
 
             binary.getModuleFile().set(compile.flatMap(task -> task.getModuleFile()));
-            binary.getCompileTask().set(compile);
             binary.getObjectsDir().set(compile.flatMap(task -> task.getObjectFileDir()));
         });
 

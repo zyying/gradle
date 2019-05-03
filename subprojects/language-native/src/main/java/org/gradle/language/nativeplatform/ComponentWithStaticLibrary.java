@@ -17,7 +17,7 @@
 package org.gradle.language.nativeplatform;
 
 import org.gradle.api.Incubating;
-import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.TaskProvider;
 import org.gradle.nativeplatform.tasks.CreateStaticLibrary;
 
 /**
@@ -29,6 +29,8 @@ import org.gradle.nativeplatform.tasks.CreateStaticLibrary;
 public interface ComponentWithStaticLibrary extends ComponentWithLinkFile {
     /**
      * Returns the task to create the static library.
+     *
+     * @since 5.5
      */
-    Provider<? extends CreateStaticLibrary> getCreateTask();
+    TaskProvider<? extends CreateStaticLibrary> getCreateTask();
 }

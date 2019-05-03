@@ -30,6 +30,8 @@ import org.gradle.api.internal.component.UsageContext;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.TaskContainer;
+import org.gradle.api.tasks.TaskProvider;
 import org.gradle.language.cpp.internal.DefaultUsageContext;
 import org.gradle.language.cpp.internal.NativeVariantIdentity;
 import org.gradle.language.nativeplatform.internal.ConfigurableComponentWithExecutable;
@@ -53,19 +55,19 @@ public class DefaultSwiftExecutable extends DefaultSwiftBinary implements SwiftE
     private final Property<Task> executableFileProducer;
     private final DirectoryProperty installDirectory;
     private final Property<Configuration> runtimeElementsProperty;
-    private final Property<LinkExecutable> linkTaskProperty;
-    private final Property<InstallExecutable> installTaskProperty;
+    private final TaskProvider<LinkExecutable> linkTask;
+    private final TaskProvider<InstallExecutable> installTask;
     private final RegularFileProperty debuggerExecutableFile;
     private final ConfigurableFileCollection outputs;
 
     @Inject
-    public DefaultSwiftExecutable(Names names, ObjectFactory objectFactory, Provider<String> module, boolean testable, FileCollection source, ConfigurationContainer configurations, Configuration implementation, SwiftPlatform targetPlatform, NativeToolChainInternal toolChain, PlatformToolProvider platformToolProvider, NativeVariantIdentity identity) {
-        super(names, objectFactory, module, testable, source, configurations, implementation, targetPlatform, toolChain, platformToolProvider, identity);
+    public DefaultSwiftExecutable(Names names, ObjectFactory objectFactory, Provider<String> module, boolean testable, FileCollection source, TaskContainer tasks, ConfigurationContainer configurations, Configuration implementation, SwiftPlatform targetPlatform, NativeToolChainInternal toolChain, PlatformToolProvider platformToolProvider, NativeVariantIdentity identity) {
+        super(names, objectFactory, module, testable, source, tasks, configurations, implementation, targetPlatform, toolChain, platformToolProvider, identity);
         this.executableFile = objectFactory.fileProperty();
         this.executableFileProducer = objectFactory.property(Task.class);
         this.installDirectory = objectFactory.directoryProperty();
-        this.linkTaskProperty = objectFactory.property(LinkExecutable.class);
-        this.installTaskProperty = objectFactory.property(InstallExecutable.class);
+        this.linkTask = tasks.register(names.getTaskName("link"), LinkExecutable.class);
+        this.installTask = tasks.register(names.getTaskName("install"), InstallExecutable.class);
         this.debuggerExecutableFile = objectFactory.fileProperty();
         this.runtimeElementsProperty = objectFactory.property(Configuration.class);
         this.outputs = objectFactory.fileCollection();
@@ -92,13 +94,13 @@ public class DefaultSwiftExecutable extends DefaultSwiftBinary implements SwiftE
     }
 
     @Override
-    public Property<LinkExecutable> getLinkTask() {
-        return linkTaskProperty;
+    public TaskProvider<LinkExecutable> getLinkTask() {
+        return linkTask;
     }
 
     @Override
-    public Property<InstallExecutable> getInstallTask() {
-        return installTaskProperty;
+    public TaskProvider<InstallExecutable> getInstallTask() {
+        return installTask;
     }
 
     @Override

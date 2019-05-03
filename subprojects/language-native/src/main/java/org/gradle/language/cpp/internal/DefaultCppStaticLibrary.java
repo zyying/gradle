@@ -32,6 +32,8 @@ import org.gradle.api.internal.provider.Providers;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.TaskContainer;
+import org.gradle.api.tasks.TaskProvider;
 import org.gradle.language.cpp.CppPlatform;
 import org.gradle.language.cpp.CppStaticLibrary;
 import org.gradle.language.nativeplatform.internal.ConfigurableComponentWithLinkUsage;
@@ -50,17 +52,22 @@ import java.util.Set;
 public class DefaultCppStaticLibrary extends DefaultCppBinary implements CppStaticLibrary, ConfigurableComponentWithStaticLibrary, ConfigurableComponentWithLinkUsage, ConfigurableComponentWithRuntimeUsage, SoftwareComponentInternal {
     private final RegularFileProperty linkFile;
     private final Property<Task> linkFileProducer;
-    private final Property<CreateStaticLibrary> createTaskProperty;
+    private final TaskProvider<CreateStaticLibrary> createTask;
     private final Property<Configuration> linkElements;
     private final Property<Configuration> runtimeElements;
     private final ConfigurableFileCollection outputs;
 
     @Inject
-    public DefaultCppStaticLibrary(Names names, ObjectFactory objectFactory, Provider<String> baseName, FileCollection sourceFiles, FileCollection componentHeaderDirs, ConfigurationContainer configurations, Configuration implementation, CppPlatform targetPlatform, NativeToolChainInternal toolChain, PlatformToolProvider platformToolProvider, NativeVariantIdentity identity) {
-        super(names, objectFactory, baseName, sourceFiles, componentHeaderDirs, configurations, implementation, targetPlatform, toolChain, platformToolProvider, identity);
+    public DefaultCppStaticLibrary(Names names, ObjectFactory objectFactory, Provider<String> baseName,
+                                   FileCollection sourceFiles, FileCollection componentHeaderDirs,
+                                   TaskContainer tasks,
+                                   ConfigurationContainer configurations, Configuration implementation,
+                                   CppPlatform targetPlatform, NativeToolChainInternal toolChain, PlatformToolProvider platformToolProvider,
+                                   NativeVariantIdentity identity) {
+        super(names, objectFactory, baseName, sourceFiles, componentHeaderDirs, tasks, configurations, implementation, targetPlatform, toolChain, platformToolProvider, identity);
         this.linkFile = objectFactory.fileProperty();
         this.linkFileProducer = objectFactory.property(Task.class);
-        this.createTaskProperty = objectFactory.property(CreateStaticLibrary.class);
+        this.createTask = tasks.register(names.getTaskName("create"), CreateStaticLibrary.class);
         this.linkElements = objectFactory.property(Configuration.class);
         this.runtimeElements = objectFactory.property(Configuration.class);
         this.outputs = objectFactory.fileCollection();
@@ -82,8 +89,8 @@ public class DefaultCppStaticLibrary extends DefaultCppBinary implements CppStat
     }
 
     @Override
-    public Property<CreateStaticLibrary> getCreateTask() {
-        return createTaskProperty;
+    public TaskProvider<CreateStaticLibrary> getCreateTask() {
+        return createTask;
     }
 
     @Override

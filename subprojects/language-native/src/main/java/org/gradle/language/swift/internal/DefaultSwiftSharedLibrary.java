@@ -29,6 +29,8 @@ import org.gradle.api.internal.component.UsageContext;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.TaskContainer;
+import org.gradle.api.tasks.TaskProvider;
 import org.gradle.language.cpp.internal.DefaultUsageContext;
 import org.gradle.language.cpp.internal.NativeVariantIdentity;
 import org.gradle.language.nativeplatform.internal.ConfigurableComponentWithLinkUsage;
@@ -50,18 +52,18 @@ public class DefaultSwiftSharedLibrary extends DefaultSwiftBinary implements Swi
     private final RegularFileProperty linkFile;
     private final Property<Task> linkFileProducer;
     private final RegularFileProperty runtimeFile;
-    private final Property<LinkSharedLibrary> linkTaskProperty;
+    private final TaskProvider<LinkSharedLibrary> linkTask;
     private final Property<Configuration> linkElements;
     private final Property<Configuration> runtimeElements;
     private final ConfigurableFileCollection outputs;
 
     @Inject
-    public DefaultSwiftSharedLibrary(Names names, ObjectFactory objectFactory, Provider<String> module, boolean testable, FileCollection source, ConfigurationContainer configurations, Configuration implementation, SwiftPlatform targetPlatform, NativeToolChainInternal toolChain, PlatformToolProvider platformToolProvider, NativeVariantIdentity identity) {
-        super(names, objectFactory, module, testable, source, configurations, implementation, targetPlatform, toolChain, platformToolProvider, identity);
+    public DefaultSwiftSharedLibrary(Names names, ObjectFactory objectFactory, Provider<String> module, boolean testable, FileCollection source, TaskContainer tasks, ConfigurationContainer configurations, Configuration implementation, SwiftPlatform targetPlatform, NativeToolChainInternal toolChain, PlatformToolProvider platformToolProvider, NativeVariantIdentity identity) {
+        super(names, objectFactory, module, testable, source, tasks, configurations, implementation, targetPlatform, toolChain, platformToolProvider, identity);
         this.linkFile = objectFactory.fileProperty();
         this.linkFileProducer = objectFactory.property(Task.class);
         this.runtimeFile = objectFactory.fileProperty();
-        this.linkTaskProperty = objectFactory.property(LinkSharedLibrary.class);
+        this.linkTask = tasks.register(names.getTaskName("link"), LinkSharedLibrary.class);
         this.linkElements = objectFactory.property(Configuration.class);
         this.runtimeElements = objectFactory.property(Configuration.class);
         this.outputs = objectFactory.fileCollection();
@@ -88,8 +90,8 @@ public class DefaultSwiftSharedLibrary extends DefaultSwiftBinary implements Swi
     }
 
     @Override
-    public Property<LinkSharedLibrary> getLinkTask() {
-        return linkTaskProperty;
+    public TaskProvider<LinkSharedLibrary> getLinkTask() {
+        return linkTask;
     }
 
     @Override

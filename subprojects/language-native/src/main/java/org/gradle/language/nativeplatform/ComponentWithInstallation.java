@@ -20,6 +20,7 @@ import org.gradle.api.Incubating;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.TaskProvider;
 import org.gradle.nativeplatform.tasks.InstallExecutable;
 
 /**
@@ -41,6 +42,8 @@ public interface ComponentWithInstallation extends ComponentWithNativeRuntime {
 
     /**
      * Returns the install task.
+     *
+     * @since 5.5
      */
-    Provider<? extends InstallExecutable> getInstallTask();
+    TaskProvider<? extends InstallExecutable> getInstallTask();
 }

@@ -22,8 +22,9 @@ import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.model.ObjectFactory;
-import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.TaskContainer;
+import org.gradle.api.tasks.TaskProvider;
 import org.gradle.language.cpp.internal.NativeVariantIdentity;
 import org.gradle.language.nativeplatform.internal.Names;
 import org.gradle.language.swift.SwiftPlatform;
@@ -43,14 +44,14 @@ public abstract class DefaultSwiftXCTestBinary extends DefaultSwiftBinary implem
     private final RegularFileProperty executableFile;
     private final DirectoryProperty installDirectory;
     private final RegularFileProperty runScriptFile;
-    private final Property<XCTest> runTaskProperty;
+    private final TaskProvider<XCTest> runTask;
 
-    public DefaultSwiftXCTestBinary(Names names, ObjectFactory objectFactory, Provider<String> module, boolean testable, FileCollection source, ConfigurationContainer configurations, Configuration implementation, SwiftPlatform targetPlatform, NativeToolChainInternal toolChain, PlatformToolProvider platformToolProvider, NativeVariantIdentity identity) {
-        super(names, objectFactory, module, testable, source, configurations, implementation, targetPlatform, toolChain, platformToolProvider, identity);
+    public DefaultSwiftXCTestBinary(Names names, ObjectFactory objectFactory, Provider<String> module, boolean testable, FileCollection source, TaskContainer tasks, ConfigurationContainer configurations, Configuration implementation, SwiftPlatform targetPlatform, NativeToolChainInternal toolChain, PlatformToolProvider platformToolProvider, NativeVariantIdentity identity) {
+        super(names, objectFactory, module, testable, source, tasks, configurations, implementation, targetPlatform, toolChain, platformToolProvider, identity);
         this.executableFile = objectFactory.fileProperty();
         this.installDirectory = objectFactory.directoryProperty();
         this.runScriptFile = objectFactory.fileProperty();
-        this.runTaskProperty = objectFactory.property(XCTest.class);
+        this.runTask = tasks.register("xcTest", XCTest.class);
     }
 
     @Override
@@ -69,7 +70,7 @@ public abstract class DefaultSwiftXCTestBinary extends DefaultSwiftBinary implem
     }
 
     @Override
-    public Property<XCTest> getRunTask() {
-        return runTaskProperty;
+    public TaskProvider<XCTest> getRunTask() {
+        return runTask;
     }
 }

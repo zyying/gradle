@@ -26,6 +26,8 @@ import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.TaskContainer;
+import org.gradle.api.tasks.TaskProvider;
 import org.gradle.language.cpp.internal.NativeVariantIdentity;
 import org.gradle.language.nativeplatform.internal.ConfigurableComponentWithExecutable;
 import org.gradle.language.nativeplatform.internal.Names;
@@ -39,20 +41,26 @@ import org.gradle.nativeplatform.toolchain.internal.PlatformToolProvider;
 import javax.inject.Inject;
 
 public class DefaultSwiftXCTestExecutable extends DefaultSwiftXCTestBinary implements SwiftXCTestExecutable, ConfigurableComponentWithExecutable {
-    private final Property<LinkExecutable> linkTask;
-    private final Property<InstallExecutable> installTask;
+    private final TaskProvider<LinkExecutable> linkTask;
+    private final TaskProvider<InstallExecutable> installTask;
     private final Property<Task> executableFileProducer;
     private final ConfigurableFileCollection files;
     private final RegularFileProperty debuggerExecutableFile;
 
     @Inject
-    public DefaultSwiftXCTestExecutable(Names names, ObjectFactory objectFactory, Provider<String> module, boolean testable, FileCollection source, ConfigurationContainer configurations, Configuration implementation, SwiftPlatform targetPlatform, NativeToolChainInternal toolChain, PlatformToolProvider platformToolProvider, NativeVariantIdentity identity) {
-        super(names, objectFactory, module, testable, source, configurations, implementation, targetPlatform, toolChain, platformToolProvider, identity);
-        debuggerExecutableFile = objectFactory.fileProperty();
+    public DefaultSwiftXCTestExecutable(Names names, ObjectFactory objectFactory, Provider<String> module,
+                                        boolean testable,
+                                        FileCollection source,
+                                        TaskContainer tasks,
+                                        ConfigurationContainer configurations, Configuration implementation,
+                                        SwiftPlatform targetPlatform, NativeToolChainInternal toolChain, PlatformToolProvider platformToolProvider,
+                                        NativeVariantIdentity identity) {
+        super(names, objectFactory, module, testable, source, tasks, configurations, implementation, targetPlatform, toolChain, platformToolProvider, identity);
+        this.debuggerExecutableFile = objectFactory.fileProperty();
         this.executableFileProducer = objectFactory.property(Task.class);
-        linkTask = objectFactory.property(LinkExecutable.class);
-        installTask = objectFactory.property(InstallExecutable.class);
-        files = objectFactory.fileCollection();
+        this.linkTask = tasks.register(names.getTaskName("link"), LinkExecutable.class);
+        this.installTask = tasks.register(names.getTaskName("install"), InstallExecutable.class);
+        this.files = objectFactory.fileCollection();
     }
 
     @Override
@@ -66,12 +74,12 @@ public class DefaultSwiftXCTestExecutable extends DefaultSwiftXCTestBinary imple
     }
 
     @Override
-    public Property<LinkExecutable> getLinkTask() {
+    public TaskProvider<LinkExecutable> getLinkTask() {
         return linkTask;
     }
 
     @Override
-    public Property<InstallExecutable> getInstallTask() {
+    public TaskProvider<InstallExecutable> getInstallTask() {
         return installTask;
     }
 

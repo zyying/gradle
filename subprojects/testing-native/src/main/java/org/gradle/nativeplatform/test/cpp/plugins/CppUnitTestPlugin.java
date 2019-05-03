@@ -135,7 +135,7 @@ public class CppUnitTestPlugin implements Plugin<Project> {
 
         testComponent.getBinaries().whenElementKnown(DefaultCppTestExecutable.class, binary -> {
             // TODO: Replace with native test task
-            final TaskProvider<RunTestExecutable> testTask = tasks.register(binary.getNames().getTaskName("run"), RunTestExecutable.class, task -> {
+            binary.getRunTask().configure(task -> {
                 task.setGroup(LifecycleBasePlugin.VERIFICATION_GROUP);
                 task.setDescription("Executes C++ unit tests.");
 
@@ -147,7 +147,6 @@ public class CppUnitTestPlugin implements Plugin<Project> {
                 // TODO: Honor changes to build directory
                 task.setOutputDir(project.getLayout().getBuildDirectory().dir("test-results/" + binary.getNames().getDirName()).get().getAsFile());
             });
-            binary.getRunTask().set(testTask);
 
             configureTestSuiteWithTestedComponentWhenAvailable(project, testComponent, binary);
         });

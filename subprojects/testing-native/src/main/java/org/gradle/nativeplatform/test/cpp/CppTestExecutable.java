@@ -17,7 +17,7 @@
 package org.gradle.nativeplatform.test.cpp;
 
 import org.gradle.api.Incubating;
-import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.TaskProvider;
 import org.gradle.language.cpp.CppBinary;
 import org.gradle.language.nativeplatform.ComponentWithExecutable;
 import org.gradle.language.nativeplatform.ComponentWithInstallation;
@@ -33,7 +33,9 @@ import org.gradle.nativeplatform.test.tasks.RunTestExecutable;
 public interface CppTestExecutable extends CppBinary, ComponentWithExecutable, ComponentWithInstallation, TestComponent {
     /**
      * {@inheritDoc}
+     *
+     * @since 5.5
      */
     @Override
-    Provider<? extends RunTestExecutable> getRunTask();
+    TaskProvider<RunTestExecutable> getRunTask();
 }

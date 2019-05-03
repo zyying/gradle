@@ -31,6 +31,8 @@ import org.gradle.api.internal.component.UsageContext;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.TaskContainer;
+import org.gradle.api.tasks.TaskProvider;
 import org.gradle.language.cpp.CppExecutable;
 import org.gradle.language.cpp.CppPlatform;
 import org.gradle.language.nativeplatform.internal.ConfigurableComponentWithExecutable;
@@ -51,21 +53,26 @@ public class DefaultCppExecutable extends DefaultCppBinary implements CppExecuta
     private final RegularFileProperty executableFile;
     private final Property<Task> executableFileProducer;
     private final DirectoryProperty installationDirectory;
-    private final Property<InstallExecutable> installTaskProperty;
-    private final Property<LinkExecutable> linkTaskProperty;
+    private final TaskProvider<InstallExecutable> installTask;
+    private final TaskProvider<LinkExecutable> linkTask;
     private final Property<Configuration> runtimeElementsProperty;
     private final ConfigurableFileCollection outputs;
     private final RegularFileProperty debuggerExecutableFile;
 
     @Inject
-    public DefaultCppExecutable(Names names, ObjectFactory objectFactory, Provider<String> baseName, FileCollection sourceFiles, FileCollection componentHeaderDirs, ConfigurationContainer configurations, Configuration implementation, CppPlatform targetPlatform, NativeToolChainInternal toolChain, PlatformToolProvider platformToolProvider, NativeVariantIdentity identity) {
-        super(names, objectFactory, baseName, sourceFiles, componentHeaderDirs, configurations, implementation, targetPlatform, toolChain, platformToolProvider, identity);
+    public DefaultCppExecutable(Names names, ObjectFactory objectFactory, Provider<String> baseName,
+                                FileCollection sourceFiles, FileCollection componentHeaderDirs,
+                                TaskContainer tasks,
+                                ConfigurationContainer configurations, Configuration implementation,
+                                CppPlatform targetPlatform, NativeToolChainInternal toolChain, PlatformToolProvider platformToolProvider,
+                                NativeVariantIdentity identity) {
+        super(names, objectFactory, baseName, sourceFiles, componentHeaderDirs, tasks, configurations, implementation, targetPlatform, toolChain, platformToolProvider, identity);
         this.executableFile = objectFactory.fileProperty();
         this.executableFileProducer = objectFactory.property(Task.class);
         this.debuggerExecutableFile = objectFactory.fileProperty();
         this.installationDirectory = objectFactory.directoryProperty();
-        this.linkTaskProperty = objectFactory.property(LinkExecutable.class);
-        this.installTaskProperty = objectFactory.property(InstallExecutable.class);
+        this.linkTask = tasks.register(names.getTaskName("link"), LinkExecutable.class);
+        this.installTask = tasks.register(names.getTaskName("install"), InstallExecutable.class);
         this.runtimeElementsProperty = objectFactory.property(Configuration.class);
         this.outputs = objectFactory.fileCollection();
     }
@@ -91,13 +98,13 @@ public class DefaultCppExecutable extends DefaultCppBinary implements CppExecuta
     }
 
     @Override
-    public Property<InstallExecutable> getInstallTask() {
-        return installTaskProperty;
+    public TaskProvider<InstallExecutable> getInstallTask() {
+        return installTask;
     }
 
     @Override
-    public Property<LinkExecutable> getLinkTask() {
-        return linkTaskProperty;
+    public TaskProvider<LinkExecutable> getLinkTask() {
+        return linkTask;
     }
 
     @Override

@@ -207,7 +207,8 @@ public class NativeBasePlugin implements Plugin<Project> {
             final PlatformToolProvider toolProvider = executable.getPlatformToolProvider();
 
             // Add a link task
-            TaskProvider<LinkExecutable> link = tasks.register(names.getTaskName("link"), LinkExecutable.class, task -> {
+            TaskProvider<? extends LinkExecutable> link = executable.getLinkTask();
+            link.configure(task -> {
                 task.source(executable.getObjects());
                 task.lib(executable.getLinkLibraries());
                 task.getLinkedFile().set(buildDirectory.file(executable.getBaseName().map(baseName -> toolProvider.getExecutableName("exe/" + names.getDirName() + baseName))));
@@ -216,7 +217,6 @@ public class NativeBasePlugin implements Plugin<Project> {
                 task.getDebuggable().set(executable.isDebuggable());
             });
 
-            executable.getLinkTask().set(link);
             executable.getDebuggerExecutableFile().set(link.flatMap(linkExecutable -> linkExecutable.getLinkedFile()));
 
             if (executable.isDebuggable() && executable.isOptimized() && toolProvider.requiresDebugBinaryStripping()) {
@@ -235,10 +235,11 @@ public class NativeBasePlugin implements Plugin<Project> {
                 executable.getExecutableFileProducer().set(link);
             }
 
-            // Add an install task
             // TODO - should probably not add this for all executables?
             // TODO - add stripped symbols to the installation
-            final TaskProvider<InstallExecutable> install = tasks.register(names.getTaskName("install"), InstallExecutable.class, task -> {
+            TaskProvider<? extends InstallExecutable> install = executable.getInstallTask();
+
+            install.configure(task -> {
                 task.getTargetPlatform().set(targetPlatform);
                 task.getToolChain().set(toolChain);
                 task.getInstallDirectory().set(buildDirectory.dir("install/" + names.getDirName()));
@@ -246,7 +247,6 @@ public class NativeBasePlugin implements Plugin<Project> {
                 task.lib(executable.getRuntimeLibraries());
             });
 
-            executable.getInstallTask().set(install);
             executable.getInstallDirectory().set(install.flatMap(task -> task.getInstallDirectory()));
             executable.getOutputs().from(executable.getInstallDirectory());
 
@@ -262,7 +262,8 @@ public class NativeBasePlugin implements Plugin<Project> {
             final PlatformToolProvider toolProvider = library.getPlatformToolProvider();
 
             // Add a link task
-            final TaskProvider<LinkSharedLibrary> link = tasks.register(names.getTaskName("link"), LinkSharedLibrary.class, task -> {
+            final TaskProvider<? extends LinkSharedLibrary> link = library.getLinkTask();
+            link.configure(task -> {
                 task.source(library.getObjects());
                 task.lib(library.getLinkLibraries());
                 task.getLinkedFile().set(buildDirectory.file(library.getBaseName().map(baseName -> toolProvider.getSharedLibraryName("lib/" + names.getDirName() + baseName))));
@@ -302,7 +303,6 @@ public class NativeBasePlugin implements Plugin<Project> {
                 library.getOutputs().from(extractSymbols.flatMap(task -> task.getSymbolFile()));
                 linkFileTask = stripSymbols;
             }
-            library.getLinkTask().set(link);
             library.getLinkFile().set(linkFile);
             library.getLinkFileProducer().set(linkFileTask);
             library.getRuntimeFile().set(runtimeFile);
@@ -316,7 +316,8 @@ public class NativeBasePlugin implements Plugin<Project> {
             final Names names = library.getNames();
 
             // Add a create task
-            final TaskProvider<CreateStaticLibrary> createTask = tasks.register(names.getTaskName("create"), CreateStaticLibrary.class, task -> {
+            final TaskProvider<? extends CreateStaticLibrary> createTask = library.getCreateTask();
+            createTask.configure(task -> {
                 task.source(library.getObjects());
                 final PlatformToolProvider toolProvider = library.getPlatformToolProvider();
                 Provider<RegularFile> linktimeFile = buildDirectory.file(
@@ -329,7 +330,6 @@ public class NativeBasePlugin implements Plugin<Project> {
             // Wire the task into the library model
             library.getLinkFile().set(createTask.flatMap(task -> task.getBinaryFile()));
             library.getLinkFileProducer().set(createTask);
-            library.getCreateTask().set(createTask);
             library.getOutputs().from(library.getLinkFile());
         });
     }

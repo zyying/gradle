@@ -18,7 +18,7 @@ package org.gradle.language.nativeplatform;
 
 import org.gradle.api.Incubating;
 import org.gradle.api.file.FileCollection;
-import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.TaskProvider;
 import org.gradle.nativeplatform.tasks.LinkSharedLibrary;
 
 /**
@@ -35,6 +35,8 @@ public interface ComponentWithSharedLibrary extends ComponentWithLinkFile, Compo
 
     /**
      * Returns the link task for the shared library.
+     *
+     * @since 5.5
      */
-    Provider<? extends LinkSharedLibrary> getLinkTask();
+    TaskProvider<? extends LinkSharedLibrary> getLinkTask();
 }
