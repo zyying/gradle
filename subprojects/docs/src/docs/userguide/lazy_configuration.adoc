@@ -69,7 +69,7 @@ The `Greeting` task has a property of type `Property<String>` to represent the c
 [NOTE]
 ====
 
-Note that Gradle Groovy DSL will generate setter methods for each `Property`-typed property in a task implementation. These setter methods allow you to configure the property using the assignment (`=`) operator as a convenience.
+Note that Gradle Groovy DSL generates setter methods for each `Property`-typed property in a task implementation. These setter methods allow you to configure the property using the assignment (`=`) operator as a convenience.
 
 Kotlin DSL conveniences will be added in a future release.
 

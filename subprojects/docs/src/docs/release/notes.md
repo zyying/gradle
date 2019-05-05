@@ -52,6 +52,16 @@ Gradle now looks for a `gradle.properties` file in the Gradle distribution used 
 
 By placing a `gradle.properties` file in a [custom Gradle distribution](userguide/organizing_gradle_projects.html#sec:custom_gradle_distribution), an organization can add default properties for the entire organization or tweak the default Gradle daemon memory parameters with `org.gradle.jvmargs`.
 
+## Improvements for plugin authors
+
+### Task dependencies are honored for `@Input` properties of type `Property`
+
+TBD - honors dependencies on `@Input` properties.
+
+### Property methods
+
+TBD - added `getLocationOnly()`. 
+
 ## Promoted features
 Promoted features are features that were incubating in previous versions of Gradle but are now supported and subject to backwards compatibility.
 See the User Manual section on the “[Feature Lifecycle](userguide/feature_lifecycle.html)” for more information.

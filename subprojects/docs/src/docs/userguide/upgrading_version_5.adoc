@@ -33,6 +33,21 @@ Some plugins will break with this new version of Gradle, for example because the
 . Run `gradle wrapper --gradle-version {gradleVersion}` to update the project to {gradleVersion}.
 . Try to run the project and debug any errors using the <<troubleshooting.adoc#troubleshooting, Troubleshooting Guide>>.
 
+[[changes_5.5]]
+== Upgrading from 5.4 and earlier
+
+=== Potential breaking changes
+
+==== Task dependencies are honored for `@Input` properties whose value is a `Property`
+
+TBD
+
+==== Declaring task dependencies using a file `Provider` that does not represent a task output
+
+Previously, it was possible to pass `Task.dependsOn()` a `Provider` that returns a file and that does not represent a task output. These providers would be ignored. In Gradle 5.5 this is now an error, as Gradle does not know how to build these files.
+
+Note that it is still possible to to pass `dependsOn()` a `Provider` that returns a file and also represents a task output, for example `myTask.dependsOn(jar.archiveFile)` or `myTask.dependsOn(task.flatMap { it.outputDir })`.
+
 [[changes_5.4]]
 == Upgrading from 5.3 and earlier
 
