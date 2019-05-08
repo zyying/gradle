@@ -90,7 +90,7 @@ public class NodeState implements DependencyGraphNode {
     private Set<ModuleIdentifier> upcomingNoLongerPendingConstraints;
     private boolean virtualPlatformNeedsRefresh;
     private Set<EdgeState> edgesToRecompute;
-    private Multimap<ModuleIdentifier, DependencyState> potentiallyActivatedConstraints;
+    private Multimap<ModuleIdentifier, DependencyState> moduleIdToConstraints;
 
     // caches
     private Map<DependencyMetadata, DependencyState> dependencyStateCache = Maps.newHashMap();
@@ -269,7 +269,7 @@ public class NodeState implements DependencyGraphNode {
             removeOutgoingEdges();
             upcomingNoLongerPendingConstraints = null;
             edgesToRecompute = null;
-            potentiallyActivatedConstraints = null;
+            moduleIdToConstraints = null;
         }
 
         visitDependencies(resolutionFilter, discoveredEdges);
@@ -339,12 +339,7 @@ public class NodeState implements DependencyGraphNode {
             for (DependencyState dependencyState : dependencies(resolutionFilter)) {
                 dependencyState = maybeSubstitute(dependencyState, resolveState.getDependencySubstitutionApplicator());
                 PendingDependenciesVisitor.PendingState pendingState = pendingDepsVisitor.maybeAddAsPendingDependency(this, dependencyState);
-                if (pendingState.isPending()) {
-                    if (potentiallyActivatedConstraints == null) {
-                        potentiallyActivatedConstraints = ArrayListMultimap.create();
-                    }
-                    potentiallyActivatedConstraints.put(dependencyState.getModuleIdentifier(), dependencyState);
-                } else {
+                if (!pendingState.isPending()) {
                     createAndLinkEdgeState(dependencyState, discoveredEdges, resolutionFilter, pendingState == PendingDependenciesVisitor.PendingState.NOT_PENDING_ACTIVATING);
                 }
             }
@@ -354,6 +349,12 @@ public class NodeState implements DependencyGraphNode {
             // then reset the state of the node that owns those dependencies.
             // This way, all edges of the node will be re-processed.
             pendingDepsVisitor.complete();
+        }
+    }
+
+    private void initializeModuleIdToConstraintMap(int size) {
+        if (moduleIdToConstraints == null) {
+            moduleIdToConstraints = ArrayListMultimap.create(size, 1);
         }
     }
 
@@ -387,9 +388,15 @@ public class NodeState implements DependencyGraphNode {
     }
 
     private List<DependencyState> cacheDependencyStates(List<? extends DependencyMetadata> dependencies) {
-        List<DependencyState> tmp = Lists.newArrayListWithCapacity(dependencies.size());
+        int size = dependencies.size();
+        List<DependencyState> tmp = Lists.newArrayListWithCapacity(size);
         for (DependencyMetadata dependency : dependencies) {
-            tmp.add(cachedDependencyStateFor(dependency));
+            DependencyState ds = cachedDependencyStateFor(dependency);
+            if (dependency.isConstraint()) {
+                initializeModuleIdToConstraintMap(size);
+                moduleIdToConstraints.put(ds.getModuleIdentifier(), ds);
+            }
+            tmp.add(ds);
         }
         return tmp;
     }
@@ -411,17 +418,16 @@ public class NodeState implements DependencyGraphNode {
      * in upcomingNoLongerPendingConstraints
      */
     private void visitAdditionalConstraints(Collection<EdgeState> discoveredEdges) {
-        if (potentiallyActivatedConstraints == null) {
+        if (moduleIdToConstraints == null) {
             return;
         }
         for (ModuleIdentifier module : upcomingNoLongerPendingConstraints) {
-            Collection<DependencyState> dependencyStates = potentiallyActivatedConstraints.get(module);
+            Collection<DependencyState> dependencyStates = moduleIdToConstraints.get(module);
             if (!dependencyStates.isEmpty()) {
                 for (DependencyState dependencyState : dependencyStates) {
                     dependencyState = maybeSubstitute(dependencyState, resolveState.getDependencySubstitutionApplicator());
                     createAndLinkEdgeState(dependencyState, discoveredEdges, previousTraversalExclusions, false);
                 }
-                potentiallyActivatedConstraints.removeAll(module);
             }
         }
         upcomingNoLongerPendingConstraints = null;

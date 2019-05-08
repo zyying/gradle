@@ -21,7 +21,6 @@ import org.gradle.integtests.fixtures.RequiredFeatures
 import org.gradle.integtests.fixtures.executer.GradleContextualExecuter
 import org.gradle.integtests.fixtures.publish.RemoteRepositorySpec
 import org.gradle.test.fixtures.server.http.MavenHttpModule
-import spock.lang.Ignore
 import spock.lang.IgnoreIf
 import spock.lang.Issue
 import spock.lang.Unroll
@@ -803,9 +802,9 @@ include 'other'
     @Unroll("can force a published platform version by forcing the platform itself via a dependency (#descriptor)")
     @RequiredFeatures([
             @RequiredFeature(feature = GradleMetadataResolveRunner.REPOSITORY_TYPE, value = "maven"),
-            @RequiredFeature(feature = GradleMetadataResolveRunner.EXPERIMENTAL_RESOLVE_BEHAVIOR, value = "true")
+            @RequiredFeature(feature = GradleMetadataResolveRunner.EXPERIMENTAL_RESOLVE_BEHAVIOR, value = "true"),
+            @RequiredFeature(feature = GradleMetadataResolveRunner.GRADLE_METADATA, value = "false"),
     ])
-    @Ignore
     def "can force a published platform version by forcing the platform itself via a dependency"() {
         repository {
             ['2.7.9', '2.9.4', '2.9.4.1'].each { v ->
