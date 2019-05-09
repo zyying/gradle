@@ -803,7 +803,6 @@ include 'other'
     @RequiredFeatures([
             @RequiredFeature(feature = GradleMetadataResolveRunner.REPOSITORY_TYPE, value = "maven"),
             @RequiredFeature(feature = GradleMetadataResolveRunner.EXPERIMENTAL_RESOLVE_BEHAVIOR, value = "true"),
-            @RequiredFeature(feature = GradleMetadataResolveRunner.GRADLE_METADATA, value = "false"),
     ])
     def "can force a published platform version by forcing the platform itself via a dependency"() {
         repository {

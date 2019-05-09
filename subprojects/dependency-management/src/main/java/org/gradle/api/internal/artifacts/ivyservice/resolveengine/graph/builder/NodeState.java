@@ -362,6 +362,7 @@ public class NodeState implements DependencyGraphNode {
         if (dependenciesMayChange) {
             cachedDependencyStates = null;
             cachedFilteredDependencyStates = null;
+            moduleIdToConstraints = null;
         }
         return metaData.getDependencies();
     }
@@ -391,12 +392,7 @@ public class NodeState implements DependencyGraphNode {
         int size = dependencies.size();
         List<DependencyState> tmp = Lists.newArrayListWithCapacity(size);
         for (DependencyMetadata dependency : dependencies) {
-            DependencyState ds = cachedDependencyStateFor(dependency);
-            if (dependency.isConstraint()) {
-                initializeModuleIdToConstraintMap(size);
-                moduleIdToConstraints.put(ds.getModuleIdentifier(), ds);
-            }
-            tmp.add(ds);
+            tmp.add(cachedDependencyStateFor(dependency));
         }
         return tmp;
     }
@@ -419,7 +415,13 @@ public class NodeState implements DependencyGraphNode {
      */
     private void visitAdditionalConstraints(Collection<EdgeState> discoveredEdges) {
         if (moduleIdToConstraints == null) {
-            return;
+            for (DependencyState dependencyState : cachedDependencyStates) {
+                DependencyMetadata dependency = dependencyState.getDependency();
+                if (dependency.isConstraint()) {
+                    initializeModuleIdToConstraintMap(cachedDependencyStates.size());
+                    moduleIdToConstraints.put(dependencyState.getModuleIdentifier(), dependencyState);
+                }
+            }
         }
         for (ModuleIdentifier module : upcomingNoLongerPendingConstraints) {
             Collection<DependencyState> dependencyStates = moduleIdToConstraints.get(module);
